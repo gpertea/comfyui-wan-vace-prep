@@ -1,6 +1,6 @@
 # Wan VACE Prep
 
-A ComfyUI node for smooth video transitions with Wan VACE - generates control video and masks
+A ComfyUI node that generates a VACE control video and mask for a smooth transition between two videos. 
 
 ## What It Does
 
