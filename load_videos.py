@@ -1,6 +1,7 @@
 import os
 import re
-import cv2
+import av
+import numpy as np
 import torch
 
 
@@ -25,15 +26,16 @@ class LoadVideosFromFolderSimple:
             },
         }
 
-    RETURN_TYPES = ["IMAGE"]
-    RETURN_NAMES = ["images"]
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("images",)
     FUNCTION = "load_videos"
     CATEGORY = "video/utility"
     DESCRIPTION = """
-    Load all videos from a folder, concatenated into a single image batch.
-    Optionally connect a VideoHelperSuite Meta Batch Manager to process large collections in smaller RAM-safe chunks. See VHS Meta Batch Manager documentation for more information.
-    - Formats: webm, mp4, mkv, gif, mov
-    - All videos must have identical resolution
+    Load all videos from a folder, concatenated into
+    a single image batch.  Optionally connect a 
+    VideoHelperSuite Meta Batch Manager to process
+    large collections in smaller RAM-safe chunks. See
+    VHS Meta Batch Manager documentation for more information.
     """
 
     def load_videos(self, folder_path, debug, meta_batch=None, unique_id=None):
@@ -150,20 +152,19 @@ class LoadVideosFromFolderSimple:
 
     def _load_video_frames(self, video_path):
         """Load all frames from a video file. Returns [N, H, W, C] float32 tensor."""
-        cap = cv2.VideoCapture(video_path)
-        if not cap.isOpened():
-            raise RuntimeError(f"Failed to open video: {video_path}")
+        container = av.open(video_path)
+
+        if len(container.streams.video) == 0:
+            container.close()
+            raise RuntimeError(f"No video stream found in: {video_path}")
 
         frames = []
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            frame_tensor = torch.from_numpy(frame_rgb).float() / 255.0
+        for frame in container.decode(video=0):
+            rgb = frame.to_ndarray(format="rgb24")
+            frame_tensor = torch.from_numpy(rgb.astype(np.float32) / 255.0)
             frames.append(frame_tensor)
 
-        cap.release()
+        container.close()
 
         if not frames:
             raise RuntimeError(f"No frames extracted from {video_path}")
@@ -190,10 +191,18 @@ class LoadVideosFromFolderSimple:
         """Fast frame count estimate using container metadata. No decoding."""
         total = 0
         for video_path in video_files:
-            cap = cv2.VideoCapture(video_path)
-            if cap.isOpened():
-                total += int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            cap.release()
+            try:
+                container = av.open(video_path)
+                if len(container.streams.video) > 0:
+                    count = container.streams.video[0].frames
+                    if count > 0:
+                        total += count
+                    else:
+                        # Container doesn't report frame count; decode to count
+                        total += sum(1 for _ in container.decode(video=0))
+                container.close()
+            except Exception:
+                pass
         return total
 
     def _frame_generator(self, video_files, debug):
@@ -205,31 +214,28 @@ class LoadVideosFromFolderSimple:
             if debug:
                 print(f"[Batched] Opening [{idx+1}/{len(video_files)}]: {os.path.basename(video_path)}")
 
-            cap = cv2.VideoCapture(video_path)
-            if not cap.isOpened():
-                raise RuntimeError(f"Failed to open video: {video_path}")
+            container = av.open(video_path)
+
+            if len(container.streams.video) == 0:
+                container.close()
+                raise RuntimeError(f"No video stream found in: {video_path}")
 
             frame_count = 0
-            while True:
-                ret, frame = cap.read()
-                if not ret:
-                    break
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                frame_tensor = torch.from_numpy(frame_rgb).float() / 255.0
+            for frame in container.decode(video=0):
+                rgb = frame.to_ndarray(format="rgb24")
+                frame_tensor = torch.from_numpy(rgb.astype(np.float32) / 255.0)
                 frame_count += 1
                 yield frame_tensor, video_path
 
-            cap.release()
+            container.close()
 
             if debug:
                 print(f"[Batched] Finished {os.path.basename(video_path)}: {frame_count} frames")
 
-
-# ComfyUI node registration
 NODE_CLASS_MAPPINGS = {
-    "LoadVideosFromFolderSimple": LoadVideosFromFolderSimple,
+    "LoadVideosFromFolderSimple": LoadVideosFromFolderSimple
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "LoadVideosFromFolderSimple": "🪐 Load Videos From Folder (Simple)",
+    "LoadVideosFromFolderSimple": "🪐 Load Videos From Folder (Simple)"
 }

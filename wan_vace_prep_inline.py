@@ -23,7 +23,7 @@ class VACESmooth(WanVACEPrepBase):
     end_frame   : INT  — last frame of the selected range, exclusive (from VFS)
     context_frames : frames of context to pull from each side of the split
     replace_frames : frames to regenerate at each transition edge
-    add_frames     : new frames to insert between the two sides
+    new_frames     : new frames to insert between the two sides
                      (equivalent to new_frames in WanVACEPrep)
 
     Output signature mirrors WanVACEPrep exactly so the downstream
@@ -40,13 +40,13 @@ class VACESmooth(WanVACEPrepBase):
                 "start_frame": ("INT", {
                     "default": 0,
                     "min": 0,
-                    "max": 99999,
+                    "max": 1000000,
                     "tooltip": "First frame of the VFS selection (0-based index)."
                 }),
                 "end_frame": ("INT", {
                     "default": 0,
                     "min": 0,
-                    "max": 99999,
+                    "max": 1000000,
                     "tooltip": "Last frame of the VFS selection, exclusive (0-based index)."
                 }),
                 "context_frames": ("INT", {
@@ -63,7 +63,7 @@ class VACESmooth(WanVACEPrepBase):
                     "step": 4,
                     "tooltip": "Number of frames to regenerate at each transition edge (multiple of 4)."
                 }),
-                "add_frames": ("INT", {
+                "new_frames": ("INT", {
                     "default": 0,
                     "min": 0,
                     "max": 240,
@@ -77,17 +77,16 @@ class VACESmooth(WanVACEPrepBase):
     RETURN_NAMES = ("control_video", "control_mask", "width", "height", "length", "start_images", "end_images")
     FUNCTION = "vace_prep_inline"
     CATEGORY = "video/VACE"
-    DESCRIPTION = (
-        "Inline VACE prep: splits a single video at the VFS selection boundary "
-        "and generates the control video and mask for smooth in-clip transitions. "
-        "Output signature matches Wan VACE Prep for drop-in compatibility."
-    )
+    DESCRIPTION = """
+    Generates VACE control video and mask for smooth transitions between
+    two specified frames, replacing and/or adding frames in the transition.
+    """
 
     # ------------------------------------------------------------------
     # Public entry point
     # ------------------------------------------------------------------
 
-    def vace_prep_inline(self, images, start_frame, end_frame, context_frames, replace_frames, add_frames):
+    def vace_prep_inline(self, images, start_frame, end_frame, context_frames, replace_frames, new_frames):
         total_frames = images.shape[0]
 
         # ── 1. Validate selection bounds ────────────────────────────────
@@ -129,7 +128,7 @@ class VACESmooth(WanVACEPrepBase):
         v1_context, v2_context = self._extract_context(video_1, video_2, context_frames, replace_frames)
         control_video, mask, _ = self._build_control_video_and_mask(
             video_1, v1_context, v2_context,
-            context_frames, replace_frames, add_frames,
+            context_frames, replace_frames, new_frames,
             height, width
         )
 
@@ -174,12 +173,10 @@ class VACESmooth(WanVACEPrepBase):
                 f"The split requires at least context_frames + replace_frames frames on each side."
             )
 
-
-# ComfyUI node registration
 NODE_CLASS_MAPPINGS = {
-    "VACESmooth": VACESmooth,
+    "VACESmooth": VACESmooth
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "VACESmooth": "🪐 VACE Smooth",
+    "VACESmooth": "🪐 VACE Smooth"
 }

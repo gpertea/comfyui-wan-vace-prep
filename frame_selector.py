@@ -1,37 +1,17 @@
+import os
 import torch
 import numpy as np
-import os
 import av
 import folder_paths
 
-# Video extensions supported for the file selector
-VIDEO_EXTENSIONS = ['mp4', 'webm', 'mkv', 'mov', 'avi', 'gif']
-
 
 class VisualFrameSelector:
+    DESCRIPTION = """
+    Interactive video frame selection.
+    - Drag markers to set start/end frames
+    - Click scrubber to seek
+    - Use transport buttons for playback
     """
-    Interactive video frame selection with visual preview.
-    
-    Load a video and use the visual scrubber to select a range of frames.
-    The selected frames are output as an IMAGE tensor.
-    
-    Frame range is inclusive at both ends, 0-based indexing.
-    start_frame=0, end_frame=4 outputs 5 frames (0, 1, 2, 3, 4).
-    
-    The UI enforces end_frame >= start_frame + 1 (minimum 2-frame selection).
-    end_frame=0 means "last frame of the video".
-    """
-
-    DESCRIPTION = """# Visual Frame Selector
-
-Interactive video frame selection with visual preview.
-
-**Controls:**
-- Drag markers to set start/end frames
-- Click scrubber to seek
-- Use transport buttons for playback
-- Right-click video for volume control
-"""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -47,10 +27,10 @@ Interactive video frame selection with visual preview.
             }
         }
 
-    RETURN_TYPES = ("IMAGE", "INT", "FLOAT", "INT", "INT", "INT", "AUDIO")
-    RETURN_NAMES = ("images", "selected_frames", "fps", "total_frames", "start_frame", "end_frame", "audio")
+    RETURN_TYPES = ("IMAGE", "INT", "INT", "INT", "INT")
+    RETURN_NAMES = ("images", "selected_frames", "total_frames", "start_frame", "end_frame")
     FUNCTION = "load_frames"
-    CATEGORY = "image/video"
+    CATEGORY = "video/utility"
 
     @classmethod
     def IS_CHANGED(cls, video, start_frame, end_frame, **kwargs):
@@ -128,20 +108,16 @@ Interactive video frame selection with visual preview.
 
             frames_tensor = torch.stack(frames)
 
-            audio = self._extract_audio(video_path, actual_start, actual_end, fps)
-
             return (
                 frames_tensor,
                 len(frames),
-                fps,
                 total_frames,
                 actual_start,
                 actual_end,
-                audio,
             )
 
         except (ValueError, FileNotFoundError):
-            raise  # Let these propagate cleanly to ComfyUI
+            raise
 
         except Exception as e:
             raise ValueError(f"Error processing video: {str(e)}")
@@ -150,81 +126,11 @@ Interactive video frame selection with visual preview.
             if container is not None:
                 container.close()
 
-    def _extract_audio(self, video_path, start_frame, end_frame, fps):
-        """Extract audio for the selected frame range using PyAV.
-        
-        Returns audio dict compatible with ComfyUI AUDIO type, or None if
-        no audio track exists.
-        """
-        if fps <= 0:
-            return None
-
-        try:
-            container = av.open(video_path)
-
-            if len(container.streams.audio) == 0:
-                container.close()
-                return None
-
-            audio_stream = container.streams.audio[0]
-            sample_rate = audio_stream.rate
-            channels = audio_stream.channels
-
-            start_time = start_frame / fps
-            duration = (end_frame - start_frame + 1) / fps
-            end_time = start_time + duration
-
-            # Seek to start time
-            if start_time > 0:
-                target_pts = int(start_time / audio_stream.time_base)
-                container.seek(target_pts, stream=audio_stream)
-
-            # Decode audio samples
-            audio_frames = []
-            for frame in container.decode(audio=0):
-                frame_time = float(frame.pts * audio_stream.time_base) if frame.pts is not None else 0.0
-                if frame_time > end_time:
-                    break
-                # Convert to float32 numpy array
-                arr = frame.to_ndarray()
-                audio_frames.append(arr)
-
-            container.close()
-
-            if len(audio_frames) == 0:
-                return None
-
-            # Concatenate all decoded audio
-            audio_np = np.concatenate(audio_frames, axis=-1)
-
-            # Ensure shape is [channels, samples]
-            if audio_np.ndim == 1:
-                audio_np = audio_np.reshape(1, -1)
-
-            # Trim to exact time range
-            start_sample = int(start_time * sample_rate)
-            end_sample = int(end_time * sample_rate)
-            total_samples = audio_np.shape[-1]
-
-            # After seeking, the first decoded frame may start before our target
-            # Just use what we have, trim to duration
-            max_samples = end_sample - start_sample
-            if audio_np.shape[-1] > max_samples:
-                audio_np = audio_np[:, :max_samples]
-
-            # ComfyUI AUDIO format: {"waveform": tensor [batch, channels, samples], "sample_rate": int}
-            audio_tensor = torch.from_numpy(audio_np.astype(np.float32))
-            audio_tensor = audio_tensor.unsqueeze(0)  # Add batch dim
-
-            return {"waveform": audio_tensor, "sample_rate": sample_rate}
-
-        except Exception:
-            return None
 
 NODE_CLASS_MAPPINGS = {
-    "VisualFrameSelector": VisualFrameSelector,
+    "VisualFrameSelector": VisualFrameSelector
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "VisualFrameSelector": "🪐 Visual Frame Selector",
+    "VisualFrameSelector": "🪐 Visual Frame Selector"
 }

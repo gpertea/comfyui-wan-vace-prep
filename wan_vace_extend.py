@@ -8,8 +8,8 @@ class WanVACEExtend:
                 "video": ("IMAGE",),
                 "extend_from_idx": ("INT", {
                     "default": -1,
-                    "min": -999999,
-                    "max": 999999,
+                    "min": -1000000,
+                    "max": 1000000,
                     "step": 1,
                     "tooltip": "Frame index to extend from. Negative values count from the end of the video. e.g., -1 is last frame"
                 }),
@@ -34,7 +34,10 @@ class WanVACEExtend:
     RETURN_NAMES = ("control_video", "control_mask", "width", "height", "length", "start_images")
     FUNCTION = "vace_extend"
     CATEGORY = "video/VACE"
-    DESCRIPTION = "Generates VACE control video and mask for extending a video from an arbitrary position using context frames."
+    DESCRIPTION = """
+    Generates VACE control video and mask for extending a video from an
+    arbitrary position using context frames.
+    """
     
     def vace_extend(self, video, extend_from_idx, context_frames, new_frames):
         height = int(video.shape[1])
@@ -97,7 +100,6 @@ class WanVACEExtend:
         length = int(control_video.shape[0])
 
         return (control_video, mask, width, height, length, start_images)
-
 
 NODE_CLASS_MAPPINGS = {
     "WanVACEExtend": WanVACEExtend

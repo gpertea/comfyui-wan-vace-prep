@@ -1,12 +1,6 @@
 import torch
 
-
 class WanVACEPrepBase:
-    """
-    Shared implementation for WanVACEPrep and WanVACEPrepBatch.
-    Not registered as a ComfyUI node.
-    """
-
     def _validate_dimensions(self, video_1, video_2):
         """Validate that both videos have matching, 16-divisible dimensions."""
         height = int(video_1.shape[1])
@@ -95,7 +89,10 @@ class WanVACEPrep(WanVACEPrepBase):
     RETURN_NAMES = ("control_video", "control_mask", "width", "height", "length", "start_images", "end_images")
     FUNCTION = "vace_prep"
     CATEGORY = "video/VACE"
-    DESCRIPTION = "Generates VACE control video and mask for smooth transitions between two videos using context frames and frame replacement."
+    DESCRIPTION = """
+    Generates VACE control video and mask for smooth transitions between
+    two videos using context frames and frame replacement.
+    """
 
     def vace_prep(self, video_1, video_2, context_frames, replace_frames, new_frames):
         width, height = self._validate_dimensions(video_1, video_2)
@@ -241,14 +238,12 @@ class WanVACEPrepBatch(WanVACEPrepBase):
 
         return (control_video, mask, width, height, length, start_images, end_images)
 
-
-# ComfyUI node registration
 NODE_CLASS_MAPPINGS = {
     "WanVACEPrep": WanVACEPrep,
-    "WanVACEPrepBatch": WanVACEPrepBatch,
+    "WanVACEPrepBatch": WanVACEPrepBatch
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "WanVACEPrep": "🪐 VACE Join",
-    "WanVACEPrepBatch": "🪐 VACE Join (Batch)",
+    "WanVACEPrepBatch": "🪐 VACE Join (Batch)"
 }

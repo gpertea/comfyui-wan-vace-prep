@@ -155,10 +155,9 @@ function updateStatusLine(ctx) {
     if (!wasVisible && ctx._remeasureControls) ctx._remeasureControls();
 
     const count = state.selection.endFrame - state.selection.startFrame + 1;
-    const fps = state.video.fps;
     const total = state.video.totalFrames;
 
-    dom.statusText.textContent = `${fps} FPS | ${total} total | Selected: ${count} frames`;
+    dom.statusText.textContent = `Total frames: ${total} | Selected frames: ${count}`;
 }
 
 // ── DOM Construction ───────────────────────────────────────────────
@@ -392,11 +391,6 @@ function hookVideoElement(ctx, video) {
  * ComfyUI may create a new <video> element when loading a new source.
  * Polls briefly since the new element may appear asynchronously.
  */
-/**
- * Re-find and re-hook the native video element after a video file change.
- * ComfyUI may create a new <video> element when loading a new source.
- * Polls briefly since the new element may appear asynchronously.
- */
 function rehookVideo(ctx) {
     const node = ctx.node;
     let attempts = 0;
@@ -587,51 +581,90 @@ async function loadVideo(ctx, filename) {
         if (widgets.startFrame) widgets.startFrame.options.max = maxFrame;
         if (widgets.endFrame) widgets.endFrame.options.max = maxFrame;
 
-        let startFrame, endFrame, currentFrame;
         if (isNewVideo) {
-            currentFrame = 0;
-            startFrame = 0;
-            endFrame = defaultEnd;
+            // New video selected by user — reset to defaults
+            updateState(ctx, {
+                video: {
+                    filename,
+                    fps: meta.fps,
+                    totalFrames: meta.total_frames,
+                    width: meta.width,
+                    height: meta.height,
+                    hasAudio: meta.has_audio,
+                    loaded: true,
+                },
+                selection: { currentFrame: 0, startFrame: 0, endFrame: defaultEnd },
+            }, "api");
+
+            // Sync seek position once the video element is ready
+            const syncWhenReady = () => {
+                const v = dom.video;
+                if (!v || ctx.state.video.filename !== filename) return;
+                if (v.readyState >= 1) {
+                    updateState(ctx, {
+                        selection: { currentFrame: 0, startFrame: 0, endFrame: defaultEnd },
+                    }, "programmatic");
+                } else {
+                    v.addEventListener("loadedmetadata", () => {
+                        if (ctx.state.video.filename === filename) {
+                            updateState(ctx, {
+                                selection: { currentFrame: 0, startFrame: 0, endFrame: defaultEnd },
+                            }, "programmatic");
+                        }
+                    }, { once: true });
+                }
+            };
+            setTimeout(syncWhenReady, 200);
+
         } else {
-            startFrame = widgets.startFrame ? clamp(widgets.startFrame.value, 0, maxFrame) : 0;
-            endFrame = widgets.endFrame ? clamp(widgets.endFrame.value, 0, maxFrame) : defaultEnd;
-            currentFrame = widgets.currentFrame ? clamp(widgets.currentFrame.value, 0, maxFrame) : 0;
-            if (endFrame === 0) endFrame = defaultEnd;
-        }
+            // Workflow restore — set video metadata now, defer reading
+            // widget values until the video element has loaded. By the time
+            // loadedmetadata fires, ComfyUI will have finished restoring
+            // all widget values from the serialized workflow.
+            updateState(ctx, {
+                video: {
+                    filename,
+                    fps: meta.fps,
+                    totalFrames: meta.total_frames,
+                    width: meta.width,
+                    height: meta.height,
+                    hasAudio: meta.has_audio,
+                    loaded: true,
+                },
+            }, "api");
 
-        updateState(ctx, {
-            video: {
-                filename,
-                fps: meta.fps,
-                totalFrames: meta.total_frames,
-                width: meta.width,
-                height: meta.height,
-                hasAudio: meta.has_audio,
-                loaded: true,
-            },
-            selection: { currentFrame, startFrame, endFrame },
-        }, "api");
-
-        // Sync seek position once the video element is ready.
-        const syncWhenReady = () => {
-            const v = dom.video;
-            if (!v || ctx.state.video.filename !== filename) return;
-            if (v.readyState >= 1) {
+            const restoreFromWidgets = () => {
+                // Use values saved by onConfigure (by name) rather than
+                // reading widgets, which may have been clobbered by
+                // ComfyUI's positional restore.
+                const saved = ctx._savedFrameValues;
+                const sf = saved ? clamp(saved.start_frame, 0, maxFrame) : 0;
+                const ef = saved ? clamp(saved.end_frame, 0, maxFrame) : defaultEnd;
+                const cf = saved ? clamp(saved.current_frame, 0, maxFrame) : 0;
                 updateState(ctx, {
-                    selection: { currentFrame, startFrame, endFrame },
+                    selection: {
+                        currentFrame: cf,
+                        startFrame: sf,
+                        endFrame: ef === 0 ? defaultEnd : ef,
+                    },
                 }, "programmatic");
-            } else {
-                v.addEventListener("loadedmetadata", () => {
-                    if (ctx.state.video.filename === filename) {
-                        updateState(ctx, {
-                            selection: { currentFrame, startFrame, endFrame },
-                        }, "programmatic");
-                    }
-                }, { once: true });
-            }
-        };
-        // Small delay to let rehookVideo find the new element first
-        setTimeout(syncWhenReady, 200);
+            };
+
+            const syncWhenReady = () => {
+                const v = dom.video;
+                if (!v || ctx.state.video.filename !== filename) return;
+                if (v.readyState >= 1) {
+                    restoreFromWidgets();
+                } else {
+                    v.addEventListener("loadedmetadata", () => {
+                        if (ctx.state.video.filename === filename) {
+                            restoreFromWidgets();
+                        }
+                    }, { once: true });
+                }
+            };
+            setTimeout(syncWhenReady, 200);
+        }
 
     } catch (err) {
         console.error("[VisualFrameSelector] Error loading video:", err);
@@ -764,6 +797,11 @@ app.registerExtension({
             // The video-preview widget may be appended to
             // node.widgets AFTER onNodeCreated returns, so we re-run ordering
             // whenever we detect the native video element.
+            //
+            // Because the widget count differs between save (with video-preview)
+            // and restore (without it yet), ComfyUI's positional value
+            // restoration assigns values to the wrong widgets. We fix this
+            // with onConfigure below, which restores frame values by name.
             const frameWidgetNames = new Set(["current_frame", "start_frame", "end_frame"]);
 
             function reorderWidgets() {
@@ -813,6 +851,37 @@ app.registerExtension({
                 },
                 widgets,
                 abortController,
+            };
+
+            // ── Serialize/restore frame values by name ──
+            // ComfyUI serializes widget values by positional index, but the
+            // video-preview widget only exists after onNodeCreated returns.
+            // This means the widget count (and therefore positions) differ
+            // between save and restore, causing values to land on the wrong
+            // widgets. We work around this by saving frame values by name
+            // in onSerialize and restoring them in onConfigure.
+            const origOnSerialize = node.onSerialize;
+            node.onSerialize = function (o) {
+                if (origOnSerialize) origOnSerialize.call(this, o);
+                o.vfs_frame_values = {
+                    current_frame: widgets.currentFrame?.value ?? 0,
+                    start_frame: widgets.startFrame?.value ?? 0,
+                    end_frame: widgets.endFrame?.value ?? 0,
+                };
+            };
+
+            const origOnConfigure = node.onConfigure;
+            node.onConfigure = function (info) {
+                if (origOnConfigure) origOnConfigure.call(this, info);
+                if (info.vfs_frame_values) {
+                    const v = info.vfs_frame_values;
+                    ctx._savedFrameValues = v;
+                    // Write to widgets immediately to override ComfyUI's
+                    // positional restore, which may have put wrong values here.
+                    if (widgets.currentFrame) widgets.currentFrame.value = v.current_frame ?? 0;
+                    if (widgets.startFrame) widgets.startFrame.value = v.start_frame ?? 0;
+                    if (widgets.endFrame) widgets.endFrame.value = v.end_frame ?? 0;
+                }
             };
 
             // ── Wire control events (these work even before video is found) ──
@@ -886,11 +955,16 @@ app.registerExtension({
                     await loadVideo(ctx, value);
                 };
 
-                // Deferred initial load for workflow restore
+                // Deferred initial load for workflow restore.
+                // Set state.video.filename so loadVideo treats this as a
+                // restore (isNewVideo=false) and defers reading widget values
+                // until loadedmetadata, by which time ComfyUI will have
+                // finished restoring all widget values.
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
                         if (!initialLoadDone && widgets.video.value) {
                             initialLoadDone = true;
+                            state.video.filename = widgets.video.value;
                             rehookVideo(ctx);
                             loadVideo(ctx, widgets.video.value);
                         }
@@ -910,11 +984,3 @@ app.registerExtension({
         };
     },
 });
-
-NODE_CLASS_MAPPINGS = {
-    "VisualFrameSelector": VisualFrameSelector,
-}
-
-NODE_DISPLAY_NAME_MAPPINGS = {
-    "VisualFrameSelector": "🪐 Visual Frame Selector",
-}

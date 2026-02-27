@@ -30,7 +30,9 @@ class WanVACEBatchContext:
     RETURN_NAMES = ("work_dir", "workfile_prefix", "video_1_filename", "video_2_filename", "is_first", "is_last")
     FUNCTION = "setup_context"
     CATEGORY = "video/VACE"
-    DESCRIPTION = "Establishes iteration context for batch video processing."
+    DESCRIPTION = """
+    Establishes iteration context for batch video join processing.
+    """
     INPUT_IS_LIST = True
     
     def setup_context(self, **kwargs):
@@ -89,5 +91,5 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "WanVACEBatchContext": "🪐 Wan VACE Batch Context"
+    "WanVACEBatchContext": "🪐 VACE Batch Context"
 }
