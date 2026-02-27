@@ -249,6 +249,6 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "WanVACEPrep": "🪐 Wan VACE Prep",
-    "WanVACEPrepBatch": "🪐 Wan VACE Prep Batch",
+    "WanVACEPrep": "🪐 VACE Join",
+    "WanVACEPrepBatch": "🪐 VACE Join (Batch)",
 }
