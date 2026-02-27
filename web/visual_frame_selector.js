@@ -79,9 +79,15 @@ function updateState(ctx, changes, source) {
     // Update video seek
     const video = dom.video;
     if (video && source !== "video-timeupdate" && state.selection.currentFrame !== prevCurrent && video.duration) {
-        const time = state.selection.currentFrame / state.video.fps;
+        // Map frame to time through video.duration rather than frame/fps.
+        // The browser's duration (from container metadata) can differ slightly
+        // from totalFrames/fps, so using duration directly avoids drift.
+        const total = state.video.totalFrames;
+        const time = total > 1
+            ? (state.selection.currentFrame / (total - 1)) * video.duration
+            : 0;
         if (Math.abs(video.currentTime - time) > 0.01) {
-            video.currentTime = time + 0.0001;
+            video.currentTime = time;
         }
     }
 
@@ -120,8 +126,8 @@ function syncWidgetValue(widget, value) {
     if (widget && widget.value !== value) {
         _syncing = true;
         widget.value = value;
-        // In Node 2.0 (Vue widgets), setting .value alone may not trigger
-        // reactivity. Fire the callback to ensure the UI updates.
+        // Setting .value alone may not trigger reactivity in all renderers.
+        // Fire the callback to ensure the UI updates.
         if (widget.callback) {
             widget.callback(value);
         }
@@ -130,8 +136,8 @@ function syncWidgetValue(widget, value) {
 }
 
 function setMarkerPosition(marker, line, frame, totalFrames) {
-    if (!totalFrames || totalFrames <= 0) return;
-    const percent = (frame / totalFrames) * 100;
+    if (!totalFrames || totalFrames <= 1) return;
+    const percent = (frame / (totalFrames - 1)) * 100;
     marker.style.left = percent + "%";
     line.style.left = percent + "%";
 }
@@ -245,68 +251,78 @@ function buildControlBar() {
 
 /**
  * Find the native video element created by ComfyUI's video-preview widget.
- * This element is created asynchronously, so we poll for it.
  * Once found, we configure it (disable controls/loop) and wire our events.
  *
- * Works in both legacy mode (widget named "video-preview") and Node 2.0
- * (Vue-rendered preview).
+ * Uses a MutationObserver on the widget container so that controls are
+ * suppressed the instant the <video> element enters the DOM — before the
+ * browser renders it. This eliminates the flash of native controls on
+ * workflow restore, where ComfyUI recreates the <video> synchronously.
+ *
+ * Falls back to polling for the widget container itself if it isn't
+ * present yet (e.g. video-preview widget added after onNodeCreated).
+ *
+ * Uses the standard widget API which works in both legacy mode and
+ * compatibility mode.
  */
 function findNativeVideoElement(node, abortController, callback) {
-    const tryFind = () => {
-        // Strategy 1 (Legacy): Find widget named "video-preview" with a <video> inside
-        for (const w of (node.widgets || [])) {
-            if (w.name === "video-preview" && w.element) {
-                const video = w.element.querySelector("video");
-                if (video) return { video, widget: w };
-            }
-        }
+    let settled = false;
 
-        // Strategy 2 (Node 2.0): Use data-node-id to find the node's Vue container,
-        // then look for a <video> element inside it.
-        // Node 2.0 renders nodes as Vue components with data-node-id="<id>" attributes.
-        if (node.id != null) {
-            const nodeContainer = document.querySelector(`[data-node-id="${node.id}"]`);
-            if (nodeContainer) {
-                const video = nodeContainer.querySelector("video");
-                if (video) return { video, widget: null };
-            }
-        }
-
-        // Strategy 3 (Fallback): Walk up from any widget element to find videos
-        for (const w of (node.widgets || [])) {
-            if (!w.element) continue;
-            let el = w.element;
-            while (el && el.parentElement) {
-                if (el.dataset?.nodeId || el.classList?.contains("comfy-node")) break;
-                el = el.parentElement;
-            }
-            if (el) {
-                const video = el.querySelector("video");
-                if (video) return { video, widget: null };
-            }
-        }
-
-        return null;
+    const onFound = (video, widget) => {
+        if (settled) return;
+        settled = true;
+        // Suppress native controls immediately — before any paint — so they
+        // never flash on workflow restore. hookVideoElement will also set
+        // these, but doing it here closes the race window.
+        video.controls = false;
+        video.muted = true;
+        callback({ video, widget });
     };
 
-    // Try immediately
-    const result = tryFind();
-    if (result) {
-        callback(result);
-        return;
-    }
+    // Attach a MutationObserver to a widget container element so we catch
+    // the <video> element the moment it's inserted, before paint.
+    const observeContainer = (widget) => {
+        const container = widget.element;
 
-    // Poll — Node 2.0 Vue rendering can take longer than legacy
+        // Already present?
+        const existing = container.querySelector("video");
+        if (existing) {
+            onFound(existing, widget);
+            return;
+        }
+
+        const mo = new MutationObserver(() => {
+            const video = container.querySelector("video");
+            if (video) {
+                mo.disconnect();
+                onFound(video, widget);
+            }
+        });
+        mo.observe(container, { childList: true, subtree: true });
+        abortController.signal.addEventListener("abort", () => mo.disconnect());
+    };
+
+    // Find the video-preview widget. It may already exist or may be added
+    // to node.widgets after onNodeCreated returns, so we poll for it briefly.
+    const tryAttach = () => {
+        for (const w of (node.widgets || [])) {
+            if (w.name === "video-preview" && w.element) {
+                observeContainer(w);
+                return true;
+            }
+        }
+        return false;
+    };
+
+    if (tryAttach()) return;
+
     let attempts = 0;
     const interval = setInterval(() => {
         attempts++;
-        const result = tryFind();
-        if (result) {
+        if (tryAttach() || settled) {
             clearInterval(interval);
-            callback(result);
         } else if (attempts > 100) { // 5 seconds
             clearInterval(interval);
-            console.warn("[VisualFrameSelector] Could not find native video element after 5s");
+            console.warn("[VisualFrameSelector] Could not find video-preview widget after 5s");
         }
     }, 50);
 
@@ -324,12 +340,18 @@ function wireVideoEvents(ctx) {
     video._vfsWired = true;
 
     // Video timeupdate -> state
+    // Derive frame from position within video.duration (consistent with seek).
     video.addEventListener("timeupdate", () => {
         if (!ctx.state.video.fps || ctx.state.video.fps <= 0) return;
-        const frame = Math.min(
-            Math.floor(video.currentTime * ctx.state.video.fps),
-            Math.max(0, ctx.state.video.totalFrames - 1)
-        );
+        const total = ctx.state.video.totalFrames;
+        const maxFrame = Math.max(0, total - 1);
+        let frame;
+        if (video.duration > 0 && total > 1) {
+            frame = Math.round((video.currentTime / video.duration) * (total - 1));
+        } else {
+            frame = Math.round(video.currentTime * ctx.state.video.fps);
+        }
+        frame = clamp(frame, 0, maxFrame);
         if (frame !== ctx.state.selection.currentFrame) {
             updateState(ctx, { selection: { currentFrame: frame } }, "video-timeupdate");
         }
@@ -370,25 +392,21 @@ function hookVideoElement(ctx, video) {
  * ComfyUI may create a new <video> element when loading a new source.
  * Polls briefly since the new element may appear asynchronously.
  */
+/**
+ * Re-find and re-hook the native video element after a video file change.
+ * ComfyUI may create a new <video> element when loading a new source.
+ * Polls briefly since the new element may appear asynchronously.
+ */
 function rehookVideo(ctx) {
     const node = ctx.node;
     let attempts = 0;
     const check = () => {
-        // Try to find current video element
         let video = null;
-
-        // Legacy: check widget
         for (const w of (node.widgets || [])) {
             if (w.name === "video-preview" && w.element) {
                 video = w.element.querySelector("video");
                 if (video) break;
             }
-        }
-
-        // Node 2.0: check by data-node-id
-        if (!video && node.id != null) {
-            const container = document.querySelector(`[data-node-id="${node.id}"]`);
-            if (container) video = container.querySelector("video");
         }
 
         if (video && video !== ctx.dom.video) {
@@ -471,13 +489,17 @@ function wireControlEvents(ctx) {
 
     buttons.playRangeBtn.onclick = () => {
         const v = dom.video;
-        if (!v) return;
+        if (!v || !v.duration) return;
         seekToFrame(state.selection.startFrame);
         v.play();
         const checkEnd = () => {
             if (v.paused) { v.removeEventListener("timeupdate", checkEnd); return; }
-            const endTime = state.selection.endFrame / state.video.fps;
-            if (v.currentTime >= endTime) {
+            const total = state.video.totalFrames;
+            if (total <= 1) return;
+            // Map endFrame to time through duration, then add one frame's worth
+            const endTime = (state.selection.endFrame / (total - 1)) * v.duration;
+            const oneFrameTime = v.duration / (total - 1);
+            if (v.currentTime >= endTime + oneFrameTime * 0.5) {
                 v.pause();
                 v.currentTime = endTime;
                 v.removeEventListener("timeupdate", checkEnd);
@@ -639,10 +661,6 @@ function setupResize(ctx) {
         requestAnimationFrame(measureControls);
     });
 
-    controlsWidget.computeSize = function () {
-        return [node.size[0], cachedControlsHeight];
-    };
-
     // Re-measure when status line appears/disappears (video load/clear)
     ctx._remeasureControls = () => {
         requestAnimationFrame(measureControls);
@@ -652,22 +670,15 @@ function setupResize(ctx) {
     const MIN_WIDTH = 315;
     const MIN_HEIGHT = 150;
 
-    // Override node.computeSize to enforce minimum dimensions.
-    // This is called by ComfyUI during initial layout, before our
-    // requestAnimationFrame runs.
-    const origComputeSize = node.computeSize;
-    node.computeSize = function (width) {
-        const result = origComputeSize ? origComputeSize.call(this, width) : [...this.size];
-        result[0] = Math.max(result[0], MIN_WIDTH);
-        result[1] = Math.max(result[1], MIN_HEIGHT);
-        return result;
+    controlsWidget.computeSize = function () {
+        return [MIN_WIDTH, cachedControlsHeight];
     };
-    // Apply immediately
-    node.setSize(node.computeSize());
+
+    // Apply minimum size immediately
+    node.setSize([Math.max(node.size[0], MIN_WIDTH), Math.max(node.size[1], MIN_HEIGHT)]);
 
     requestAnimationFrame(() => {
-        const btnBarW = dom.controlBar.element.offsetWidth;
-        node.minWidth = Math.max(btnBarW || MIN_WIDTH, MIN_WIDTH);
+        node.minWidth = MIN_WIDTH;
         node.minHeight = MIN_HEIGHT;
         node.lastResizePos = [...node.pos];
 
@@ -750,7 +761,7 @@ app.registerExtension({
             //   4. current_frame, start_frame, end_frame
             //   5. any other widgets we don't recognize
             //
-            // In Node 2.0 (Vue), the video-preview widget may be appended to
+            // The video-preview widget may be appended to
             // node.widgets AFTER onNodeCreated returns, so we re-run ordering
             // whenever we detect the native video element.
             const frameWidgetNames = new Set(["current_frame", "start_frame", "end_frame"]);
@@ -812,39 +823,37 @@ app.registerExtension({
             findNativeVideoElement(node, abortController, (result) => {
                 const { video, widget } = result;
 
+                // Detect unsupported renderer: if the widget's video element
+                // is not in the DOM, the renderer (e.g. Node 2.0 Vue) is managing
+                // its own elements and our controls cannot interact with them.
+                if (!video.isConnected) {
+                    console.warn("[VisualFrameSelector] Video element is detached from DOM — renderer not supported. Controls disabled.");
+                    ctx.dom.controlsContainer.innerHTML = "";
+                    const msg = document.createElement("div");
+                    msg.style.cssText = "padding:12px;color:#f80;font-size:13px;text-align:center;line-height:1.4;";
+                    msg.textContent = "Visual Frame Selector controls are not supported with the current renderer. Please disable Nodes 2.0 in ComfyUI settings, or use the native video controls above.";
+                    ctx.dom.controlsContainer.appendChild(msg);
+                    node.setSize(node.computeSize());
+                    return;
+                }
+
                 // Take over the video element
                 hookVideoElement(ctx, video);
 
-                // Re-run widget ordering (helps legacy mode).
+                // Override video-preview's computeSize to scale with the current
+                // node width rather than the video's intrinsic dimensions.
+                // Without this, ComfyUI's drag resize uses computeSize() as a floor,
+                // locking the node at whatever size it was saved at.
+                widget.computeSize = function (width) {
+                    const w = width || node.size[0];
+                    const aspectRatio = (video.videoHeight && video.videoWidth)
+                        ? video.videoHeight / video.videoWidth
+                        : 9 / 16;
+                    return [w, Math.round(w * aspectRatio)];
+                };
+
+                // Re-run widget ordering now that video-preview exists
                 reorderWidgets();
-
-                // Detect Node 2.0 vs Legacy: Node 2.0 has data-node-id containers
-                const nodeContainer = video.closest("[data-node-id]");
-                const isNode2 = !!nodeContainer;
-
-                if (isNode2) {
-                    // Node 2.0: Vue controls DOM order, so widget array reordering
-                    // alone won't move the video preview. Physically reorder in DOM.
-                    const widgetsGrid = nodeContainer.querySelector(".lg-node-widgets");
-                    const videoContent = nodeContainer.querySelector(".lg-node-content");
-                    if (widgetsGrid && videoContent) {
-                        const videoWrapper = videoContent.parentElement;
-                        const controlsEl = ctx.dom.controlsContainer;
-                        if (controlsEl && videoWrapper) {
-                            let controlsGridCell = controlsEl;
-                            while (controlsGridCell && controlsGridCell.parentElement !== widgetsGrid) {
-                                controlsGridCell = controlsGridCell.parentElement;
-                            }
-                            if (controlsGridCell) {
-                                videoWrapper.style.flex = "none";
-                                videoWrapper.style.gridColumn = "1 / -1";
-                                widgetsGrid.insertBefore(videoWrapper, controlsGridCell);
-                            }
-                        }
-                    }
-                }
-
-                node.setSize(node.computeSize());
 
                 // If video already has metadata loaded, restore state
                 if (video.duration && ctx.state.video.loaded) {
@@ -882,6 +891,7 @@ app.registerExtension({
                     requestAnimationFrame(() => {
                         if (!initialLoadDone && widgets.video.value) {
                             initialLoadDone = true;
+                            rehookVideo(ctx);
                             loadVideo(ctx, widgets.video.value);
                         }
                     });
@@ -900,3 +910,11 @@ app.registerExtension({
         };
     },
 });
+
+NODE_CLASS_MAPPINGS = {
+    "VisualFrameSelector": VisualFrameSelector,
+}
+
+NODE_DISPLAY_NAME_MAPPINGS = {
+    "VisualFrameSelector": "🪐 Visual Frame Selector",
+}

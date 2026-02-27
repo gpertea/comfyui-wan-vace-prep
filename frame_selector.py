@@ -220,3 +220,11 @@ Interactive video frame selection with visual preview.
 
         except Exception:
             return None
+
+NODE_CLASS_MAPPINGS = {
+    "VisualFrameSelector": VisualFrameSelector,
+}
+
+NODE_DISPLAY_NAME_MAPPINGS = {
+    "VisualFrameSelector": "🪐 Visual Frame Selector",
+}
