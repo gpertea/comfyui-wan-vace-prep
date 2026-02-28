@@ -30,8 +30,8 @@ class WanVACEExtend:
             }
         }
     
-    RETURN_TYPES = ("IMAGE", "MASK", "INT", "INT", "INT", "IMAGE")
-    RETURN_NAMES = ("control_video", "control_mask", "width", "height", "length", "start_images")
+    RETURN_TYPES = ("IMAGE", "MASK", "INT", "INT", "INT", "IMAGE", "INT", "INT")
+    RETURN_NAMES = ("control_video", "control_mask", "width", "height", "length", "start_images", "context_frames", "new_frames")
     FUNCTION = "vace_extend"
     CATEGORY = "video/VACE"
     DESCRIPTION = """
@@ -99,7 +99,7 @@ class WanVACEExtend:
         
         length = int(control_video.shape[0])
 
-        return (control_video, mask, width, height, length, start_images)
+        return (control_video, mask, width, height, length, start_images, context_frames, new_frames)
 
 NODE_CLASS_MAPPINGS = {
     "WanVACEExtend": WanVACEExtend

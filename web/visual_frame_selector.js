@@ -895,6 +895,12 @@ app.registerExtension({
                 // Detect unsupported renderer: if the widget's video element
                 // is not in the DOM, the renderer (e.g. Node 2.0 Vue) is managing
                 // its own elements and our controls cannot interact with them.
+                console.log("[VisualFrameSelector] Renderer check — video.isConnected:", video.isConnected,
+                    "| widget.element.isConnected:", widget.element.isConnected,
+                    "| video.readyState:", video.readyState,
+                    "| video.src:", video.src ? "set" : "empty",
+                    "| inSubgraph:", !!node.graph?.subgraph
+                );
                 if (!video.isConnected) {
                     console.warn("[VisualFrameSelector] Video element is detached from DOM — renderer not supported. Controls disabled.");
                     ctx.dom.controlsContainer.innerHTML = "";
@@ -908,6 +914,21 @@ app.registerExtension({
 
                 // Take over the video element
                 hookVideoElement(ctx, video);
+
+                // Persistent watcher: ComfyUI may replace the <video> element
+                // after initialization (e.g. when the video source finishes loading).
+                // rehookVideo polls for 1 second but may miss replacements that
+                // arrive later. This observer has no expiry — it watches for the
+                // lifetime of the node and re-hooks immediately if a new element appears.
+                const replacementObserver = new MutationObserver(() => {
+                    const current = widget.element.querySelector("video");
+                    if (current && current !== ctx.dom.video) {
+                        console.log("[VisualFrameSelector] Video element replaced — re-hooking.");
+                        hookVideoElement(ctx, current);
+                    }
+                });
+                replacementObserver.observe(widget.element, { childList: true, subtree: true });
+                abortController.signal.addEventListener("abort", () => replacementObserver.disconnect());
 
                 // Override video-preview's computeSize to scale with the current
                 // node width rather than the video's intrinsic dimensions.

@@ -11,6 +11,16 @@ class VisualFrameSelector:
     - Drag markers to set start/end frames
     - Click scrubber to seek
     - Use transport buttons for playback
+
+    Outputs:
+      • selected_frames – selected frame range (for VACE conditioning)
+      • all_frames     – every frame in the video (replaces a separate Load Video node)
+      • selected_count – number of selected frames
+      • frame_count    – total frames in video
+      • start_frame    – resolved start frame index
+      • end_frame      – resolved end frame index
+      • fps            – video frame rate
+      • audio          – audio track (silent placeholder if none)
     """
 
     @classmethod
@@ -20,15 +30,16 @@ class VisualFrameSelector:
         files = folder_paths.filter_files_content_types(files, ["video"])
         return {
             "required": {
-                "video": (sorted(files), {"video_upload": True}),
+                "video":         (sorted(files), {"video_upload": True}),
                 "current_frame": ("INT", {"default": 0, "min": 0, "max": 1000000, "step": 1}),
-                "start_frame": ("INT", {"default": 0, "min": 0, "max": 1000000, "step": 1}),
-                "end_frame": ("INT", {"default": 0, "min": 0, "max": 1000000, "step": 1}),
-            }
+                "start_frame":   ("INT", {"default": 0, "min": 0, "max": 1000000, "step": 1}),
+                "end_frame":     ("INT", {"default": 0, "min": 0, "max": 1000000, "step": 1}),
+            },
         }
 
-    RETURN_TYPES = ("IMAGE", "INT", "INT", "INT", "INT")
-    RETURN_NAMES = ("images", "selected_frames", "total_frames", "start_frame", "end_frame")
+    RETURN_TYPES  = ("IMAGE", "IMAGE", "INT",  "INT",  "INT",  "INT",  "FLOAT", "AUDIO")
+    RETURN_NAMES  = ("selected_frames", "all_frames", "selected_count", "frame_count",
+                     "start_frame", "end_frame", "fps", "audio")
     FUNCTION = "load_frames"
     CATEGORY = "video/utility"
 
@@ -44,6 +55,81 @@ class VisualFrameSelector:
             return f"Invalid video file: {video}"
         return True
 
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _decode_video_frames(container, video_stream, start=0, end=None):
+        """Decode frames [start, end] inclusive. Returns list of RGB uint8 ndarrays."""
+        fps = float(video_stream.average_rate) if video_stream.average_rate else 30.0
+        codec_name = video_stream.codec_context.name if video_stream.codec_context else "unknown"
+
+        if start > 0:
+            target_pts = int(start / fps / video_stream.time_base)
+            container.seek(target_pts, stream=video_stream)
+
+        frames = []
+        frame_index = 0
+        for frame in container.decode(video=0):
+            if frame_index < start:
+                frame_index += 1
+                continue
+            if end is not None and frame_index > end:
+                break
+            try:
+                rgb = frame.to_ndarray(format="rgb24")
+            except Exception:
+                raise ValueError(
+                    f"Cannot decode frame {frame_index}: codec '{codec_name}' "
+                    f"is not supported. Re-encode with h264, h265, or vp9."
+                )
+            frames.append(rgb)
+            frame_index += 1
+
+        return frames
+
+    @staticmethod
+    def _extract_audio(video_path):
+        """Return a ComfyUI-compatible audio dict, or None if no audio track."""
+        try:
+            container = av.open(video_path)
+            if not container.streams.audio:
+                container.close()
+                return None
+
+            audio_stream = container.streams.audio[0]
+            sample_rate  = audio_stream.sample_rate
+
+            pcm_frames = []
+            for frame in container.decode(audio=0):
+                arr = frame.to_ndarray()          # (channels, samples) or (samples,)
+                if arr.ndim == 1:
+                    arr = arr[np.newaxis, :]
+                pcm_frames.append(arr.astype(np.float32))
+
+            container.close()
+
+            if not pcm_frames:
+                return None
+
+            waveform = np.concatenate(pcm_frames, axis=-1)   # (C, N)
+            max_val  = np.abs(waveform).max()
+            if max_val > 1.0:
+                waveform = waveform / max_val
+
+            # ComfyUI AUDIO format: {"waveform": Tensor[B,C,N], "sample_rate": int}
+            waveform_t = torch.from_numpy(waveform).unsqueeze(0)   # (1, C, N)
+            return {"waveform": waveform_t, "sample_rate": sample_rate}
+
+        except Exception as e:
+            print(f"[VisualFrameSelector] Audio extraction skipped: {e}")
+            return None
+
+    # ------------------------------------------------------------------
+    # Main
+    # ------------------------------------------------------------------
+
     def load_frames(self, video, current_frame=0, start_frame=0, end_frame=0):
         video_path = folder_paths.get_annotated_filepath(video)
 
@@ -54,74 +140,69 @@ class VisualFrameSelector:
         try:
             container = av.open(video_path)
 
-            if len(container.streams.video) == 0:
+            if not container.streams.video:
                 raise ValueError("No video stream found in file")
 
             video_stream = container.streams.video[0]
-            codec_name = video_stream.codec_context.name if video_stream.codec_context else "unknown"
-
             fps = float(video_stream.average_rate) if video_stream.average_rate else 30.0
+
+            # --- Total frame count -------------------------------------------
             total_frames = video_stream.frames
             if total_frames == 0:
                 total_frames = sum(1 for _ in container.decode(video=0))
                 container.seek(0)
 
-            # Resolve frame range (inclusive, 0-based)
+            # --- Resolve selected range (inclusive, 0-based) -----------------
             actual_start = max(0, min(start_frame, total_frames - 1))
-            actual_end = end_frame if end_frame > 0 else total_frames - 1
-            actual_end = min(actual_end, total_frames - 1)
-
+            actual_end   = end_frame if end_frame > 0 else total_frames - 1
+            actual_end   = min(actual_end, total_frames - 1)
             if actual_end <= actual_start:
                 actual_end = min(actual_start + 1, total_frames - 1)
 
-            # Seek to start frame
-            if actual_start > 0:
-                target_pts = int(actual_start / fps / video_stream.time_base)
-                container.seek(target_pts, stream=video_stream)
+            # --- Decode selected frames --------------------------------------
+            selected_rgb = self._decode_video_frames(
+                container, video_stream, actual_start, actual_end
+            )
 
-            # Decode frames
-            frames = []
-            frame_index = 0
-            for frame in container.decode(video=0):
-                if frame_index < actual_start:
-                    frame_index += 1
-                    continue
-                if frame_index > actual_end:
-                    break
+            if not selected_rgb:
+                raise ValueError("No frames were loaded from the video")
 
-                try:
-                    rgb = frame.to_ndarray(format="rgb24")
-                except Exception:
-                    raise ValueError(
-                        f"Cannot decode frame {frame_index}: codec '{codec_name}' "
-                        f"is not supported. Re-encode the video with a compatible "
-                        f"codec (e.g. h264, h265, vp9)."
-                    )
-                frames.append(torch.from_numpy(rgb.astype(np.float32) / 255.0))
-                frame_index += 1
+            selected_tensor = torch.stack([
+                torch.from_numpy(f.astype(np.float32) / 255.0) for f in selected_rgb
+            ])
+
+            # --- Decode ALL frames -------------------------------------------
+            container.seek(0)
+            all_rgb = self._decode_video_frames(container, video_stream, 0, None)
+
+            all_tensor = torch.stack([
+                torch.from_numpy(f.astype(np.float32) / 255.0) for f in all_rgb
+            ])
 
             container.close()
             container = None
 
-            if len(frames) == 0:
-                raise ValueError("No frames were loaded from the video")
-
-            frames_tensor = torch.stack(frames)
+            # --- Audio -------------------------------------------------------
+            audio = self._extract_audio(video_path)
+            if audio is None:
+                # Silent placeholder so the AUDIO output is always valid
+                audio = {"waveform": torch.zeros(1, 2, 1), "sample_rate": 44100}
 
             return (
-                frames_tensor,
-                len(frames),
-                total_frames,
-                actual_start,
-                actual_end,
+                selected_tensor,    # images        – selected range
+                all_tensor,         # all_frames    – full video (or capped)
+                len(selected_rgb),  # selected_count
+                total_frames,       # total_frames
+                actual_start,       # start_frame
+                actual_end,         # end_frame
+                fps,                # fps
+                audio,              # audio
             )
 
         except (ValueError, FileNotFoundError):
             raise
-
         except Exception as e:
             raise ValueError(f"Error processing video: {str(e)}")
-
         finally:
             if container is not None:
                 container.close()

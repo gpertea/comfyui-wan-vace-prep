@@ -18,13 +18,12 @@ class VACESmooth(WanVACEPrepBase):
 
     Parameters
     ----------
-    images      : IMAGE batch — the full source video
-    start_frame : INT  — first frame of the selected range (from VFS)
-    end_frame   : INT  — last frame of the selected range, exclusive (from VFS)
+    images         : IMAGE batch — the full source video
+    start_frame    : INT  — first frame of the selected range (from VFS)
+    end_frame      : INT  — last frame of the selected range, exclusive (from VFS)
     context_frames : frames of context to pull from each side of the split
-    replace_frames : frames to regenerate at each transition edge
-    new_frames     : new frames to insert between the two sides
-                     (equivalent to new_frames in WanVACEPrep)
+    new_frames     : additional new frames to insert within the selected range,
+                     expanding the video length beyond the original selection size
 
     Output signature mirrors WanVACEPrep exactly so the downstream
     sampler wiring is identical.
@@ -56,37 +55,33 @@ class VACESmooth(WanVACEPrepBase):
                     "step": 4,
                     "tooltip": "Reference frames from each video edge for VACE interpolation (multiple of 4)."
                 }),
-                "replace_frames": ("INT", {
-                    "default": 8,
-                    "min": 0,
-                    "max": 120,
-                    "step": 4,
-                    "tooltip": "Number of frames to regenerate at each transition edge (multiple of 4)."
-                }),
                 "new_frames": ("INT", {
                     "default": 0,
                     "min": 0,
                     "max": 240,
                     "step": 4,
-                    "tooltip": "Number of new transition frames to generate in addition to replace_frames (multiple of 4)."
+                    "tooltip": "Additional frames to insert within the selected range, expanding the video length (multiple of 4)."
                 }),
             }
         }
 
-    RETURN_TYPES = ("IMAGE", "MASK", "INT", "INT", "INT", "IMAGE", "IMAGE")
-    RETURN_NAMES = ("control_video", "control_mask", "width", "height", "length", "start_images", "end_images")
+    RETURN_TYPES = ("IMAGE", "MASK", "INT", "INT", "INT", "IMAGE", "IMAGE", "INT", "INT")
+    RETURN_NAMES = ("control_video", "control_mask", "width", "height", "length", "start_images", "end_images", "context_frames", "new_frames")
     FUNCTION = "vace_prep_inline"
     CATEGORY = "video/VACE"
     DESCRIPTION = """
-    Generates VACE control video and mask for smooth transitions between
-    two specified frames, replacing and/or adding frames in the transition.
+    Generates VACE control video and mask for smooth in-place regeneration
+    of a selected frame range within a single video. The selected range
+    (start_frame to end_frame) defines what VACE regenerates. context_frames
+    on each side condition the generation. new_frames optionally inserts
+    additional frames within the selected range, expanding the video length.
     """
 
     # ------------------------------------------------------------------
     # Public entry point
     # ------------------------------------------------------------------
 
-    def vace_prep_inline(self, images, start_frame, end_frame, context_frames, replace_frames, new_frames):
+    def vace_prep_inline(self, images, start_frame, end_frame, context_frames, new_frames):
         total_frames = images.shape[0]
 
         # ── 1. Validate selection bounds ────────────────────────────────
@@ -96,50 +91,60 @@ class VACESmooth(WanVACEPrepBase):
         # video_1: everything up to (but not including) the selection
         # video_2: everything from end_frame onwards
         # The selected range itself is treated as the gap VACE will fill/smooth.
-        split_point = start_frame          # last frame of video_1 group
-        video_1 = images[:split_point] if split_point > 0 else images[:1]
+        video_1 = images[:start_frame] if start_frame > 0 else images[:1]
         video_2 = images[end_frame:] if end_frame < total_frames else images[-1:]
 
         # ── 3. Validate dimensions (delegates to base) ──────────────────
         width, height = self._validate_dimensions(video_1, video_2)
 
-        # ── 4. Validate each half has enough frames ─────────────────────
-        required = context_frames + replace_frames
-
-        if video_1.shape[0] < required:
+        # ── 4. Validate each half has enough frames for context ──────────
+        if video_1.shape[0] < context_frames:
             raise ValueError(
                 f"The region before start_frame ({start_frame}) contains only "
-                f"{video_1.shape[0]} frame(s), but context_frames ({context_frames}) + "
-                f"replace_frames ({replace_frames}) = {required} are required. "
-                f"Move start_frame further into the clip or reduce context/replace values."
+                f"{video_1.shape[0]} frame(s), but context_frames ({context_frames}) are required. "
+                f"Move start_frame further into the clip or reduce context_frames."
             )
 
-        if video_2.shape[0] < required:
+        if video_2.shape[0] < context_frames:
             frames_after = total_frames - end_frame
             raise ValueError(
                 f"The region after end_frame ({end_frame}) contains only "
                 f"{video_2.shape[0]} frame(s) ({frames_after} in the original clip), "
-                f"but context_frames ({context_frames}) + replace_frames ({replace_frames}) "
-                f"= {required} are required. "
-                f"Move end_frame earlier or reduce context/replace values."
+                f"but context_frames ({context_frames}) are required. "
+                f"Move end_frame earlier or reduce context_frames."
             )
 
-        # ── 5. Build control video and mask (shared base logic) ──────────
-        v1_context, v2_context = self._extract_context(video_1, video_2, context_frames, replace_frames)
+        # ── 5. Build control video and mask ─────────────────────────────
+        # replace_frames=0: context is taken from the outermost context_frames
+        # of each side. The selected range length drives vace_count via new_frames
+        # augmented by the selection size.
+        #
+        # Wan requires 4n+1 frames. The base class adds 1 to vace_count, so we
+        # need new_frames to be a multiple of 4. Snap selection_size up to the
+        # nearest 4n+1 before subtracting 1 so that new_frames ends up as 4n.
+        selection_size = end_frame - start_frame
+        remainder = selection_size % 4
+        snapped_size = selection_size if remainder == 1 else selection_size + ((1 - remainder) % 4)
+        if snapped_size != selection_size:
+            print(
+                f"[VACE Smooth] Selection size {selection_size} is not 4n+1. "
+                f"Snapping up to {snapped_size} frames. "
+                f"Output will be {snapped_size - selection_size} frame(s) longer than input."
+            )
+        v1_context, v2_context = self._extract_context(video_1, video_2, context_frames, replace_frames=0)
         control_video, mask, _ = self._build_control_video_and_mask(
             video_1, v1_context, v2_context,
-            context_frames, replace_frames, new_frames,
-            height, width
+            context_frames, replace_frames=0,
+            new_frames=snapped_size - 1 + new_frames,
+            height=height, width=width
         )
 
         # ── 6. Compute pass-through frame ranges ─────────────────────────
-        # start_images: the portion of video_1 before the context/replace window
-        # end_images:   the portion of video_2 after the context/replace window
-        start_images = video_1[:-(context_frames + replace_frames)]
-        end_images = video_2[context_frames + replace_frames:]
+        start_images = video_1[:-context_frames]
+        end_images = video_2[context_frames:]
         length = int(control_video.shape[0])
 
-        return (control_video, mask, width, height, length, start_images, end_images)
+        return (control_video, mask, width, height, length, start_images, end_images, context_frames, new_frames)
 
     # ------------------------------------------------------------------
     # Private helpers
@@ -163,14 +168,14 @@ class VACESmooth(WanVACEPrepBase):
         if start_frame == 0:
             raise ValueError(
                 f"start_frame is 0, which leaves no frames before the selection. "
-                f"The split requires at least context_frames + replace_frames frames on each side."
+                f"The split requires at least context_frames frames on each side."
             )
 
         if end_frame == total_frames:
             raise ValueError(
                 f"end_frame ({end_frame}) equals the total video length ({total_frames}), "
                 f"which leaves no frames after the selection. "
-                f"The split requires at least context_frames + replace_frames frames on each side."
+                f"The split requires at least context_frames frames on each side."
             )
 
 NODE_CLASS_MAPPINGS = {

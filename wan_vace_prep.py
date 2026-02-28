@@ -85,8 +85,8 @@ class WanVACEPrep(WanVACEPrepBase):
             }
         }
 
-    RETURN_TYPES = ("IMAGE", "MASK", "INT", "INT", "INT", "IMAGE", "IMAGE")
-    RETURN_NAMES = ("control_video", "control_mask", "width", "height", "length", "start_images", "end_images")
+    RETURN_TYPES = ("IMAGE", "MASK", "INT", "INT", "INT", "IMAGE", "IMAGE", "INT", "INT", "INT")
+    RETURN_NAMES = ("control_video", "control_mask", "width", "height", "length", "start_images", "end_images", "context_frames", "replace_frames", "new_frames")
     FUNCTION = "vace_prep"
     CATEGORY = "video/VACE"
     DESCRIPTION = """
@@ -124,7 +124,7 @@ class WanVACEPrep(WanVACEPrepBase):
         end_images = video_2[context_frames + replace_frames:]
         length = int(control_video.shape[0])
 
-        return (control_video, mask, width, height, length, start_images, end_images)
+        return (control_video, mask, width, height, length, start_images, end_images, context_frames, replace_frames, new_frames)
 
 
 class WanVACEPrepBatch(WanVACEPrepBase):
@@ -170,8 +170,8 @@ class WanVACEPrepBatch(WanVACEPrepBase):
             }
         }
 
-    RETURN_TYPES = ("IMAGE", "MASK", "INT", "INT", "INT", "IMAGE", "IMAGE")
-    RETURN_NAMES = ("control_video", "control_mask", "width", "height", "length", "start_images", "end_images")
+    RETURN_TYPES = ("IMAGE", "MASK", "INT", "INT", "INT", "IMAGE", "IMAGE", "INT", "INT", "INT")
+    RETURN_NAMES = ("control_video", "control_mask", "width", "height", "length", "start_images", "end_images", "context_frames", "replace_frames", "new_frames")
     FUNCTION = "vace_prep_batch"
     CATEGORY = "video/VACE"
     DESCRIPTION = "Batch-aware VACE prep that handles first/last iteration edge cases for multi-video processing."
@@ -236,7 +236,7 @@ class WanVACEPrepBatch(WanVACEPrepBase):
             print(f"  VACE output: {context_frames * 2 + vace_count} frames ({context_frames * 2} context + {vace_count} generated)")
             print(f"===========================\n")
 
-        return (control_video, mask, width, height, length, start_images, end_images)
+        return (control_video, mask, width, height, length, start_images, end_images, context_frames, replace_frames, new_frames)
 
 NODE_CLASS_MAPPINGS = {
     "WanVACEPrep": WanVACEPrep,
