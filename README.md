@@ -6,6 +6,9 @@ ComfyUI nodes for Wan VACE workflows. Control video and mask creation for transi
 **Install via ComfyUI Manager:** Search for "Wan VACE Prep"
 
 **Or clone this repository:**
+
+### Note: This repository is currently in the middle of some refactoring. The latest commits may be unstable or broken. Use tag [v1.0.10](https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep/releases/tag/v1.0.10) or the latest version in ComfyUI Manager (not nightly) for stable, tested code.
+
 ```bash
 cd /path/to/comfyui/custom_nodes
 git clone https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep
