@@ -8,19 +8,6 @@ import folder_paths
 class VisualFrameSelector:
     DESCRIPTION = """
     Interactive video frame selection.
-    - Drag markers to set start/end frames
-    - Click scrubber to seek
-    - Use transport buttons for playback
-
-    Outputs:
-      • selected_frames – selected frame range (for VACE conditioning)
-      • all_frames     – every frame in the video (replaces a separate Load Video node)
-      • selected_count – number of selected frames
-      • frame_count    – total frames in video
-      • start_frame    – resolved start frame index
-      • end_frame      – resolved end frame index
-      • fps            – video frame rate
-      • audio          – audio track (silent placeholder if none)
     """
 
     @classmethod
@@ -42,6 +29,7 @@ class VisualFrameSelector:
                      "start_frame", "end_frame", "fps", "audio")
     FUNCTION = "load_frames"
     CATEGORY = "video/utility"
+    EXPERIMENTAL = True
 
     @classmethod
     def IS_CHANGED(cls, video, start_frame, end_frame, **kwargs):
@@ -159,6 +147,8 @@ class VisualFrameSelector:
             if actual_end <= actual_start:
                 actual_end = min(actual_start + 1, total_frames - 1)
 
+            print(f"[VisualFrameSelector] start_frame: {start_frame}, actual_start: {actual_start}")
+            print(f"[VisualFrameSelector] end_frame: {end_frame}, actual_end: {actual_end}")
             # --- Decode selected frames --------------------------------------
             selected_rgb = self._decode_video_frames(
                 container, video_stream, actual_start, actual_end
@@ -213,5 +203,5 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "VisualFrameSelector": "🪐 Visual Frame Selector"
+    "VisualFrameSelector": "🪐 Visual Frame Selector (Experimental)"
 }

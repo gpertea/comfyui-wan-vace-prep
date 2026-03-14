@@ -3,14 +3,14 @@ import torch
 class WanVACEPrepBase:
     def _validate_dimensions(self, video_1, video_2):
         """Validate that both videos have matching, 16-divisible dimensions."""
-        height = int(video_1.shape[1])
-        width = int(video_1.shape[2])
+        height = video_1.shape[1]
+        width = video_1.shape[2]
 
         if video_2.shape[1] != height or video_2.shape[2] != width:
             raise ValueError(
                 f"Video dimensions must match. "
                 f"video_1 is {width}x{height}, "
-                f"video_2 is {int(video_2.shape[2])}x{int(video_2.shape[1])}"
+                f"video_2 is {video_2.shape[2]}x{video_2.shape[1]}"
             )
 
         if width % 16 != 0 or height % 16 != 0:
@@ -176,15 +176,15 @@ class WanVACEPrepBatch(WanVACEPrepBase):
     CATEGORY = "video/VACE"
     DESCRIPTION = "Batch-aware VACE prep that handles first/last iteration edge cases for multi-video processing."
 
-    def vace_prep_batch(self, video_1, video_2, context_frames, replace_frames, new_frames, is_first, is_last, debug=False):
+    def vace_prep_batch(self, video_1, video_2, context_frames, replace_frames, new_frames, is_first, is_last, debug):
         width, height = self._validate_dimensions(video_1, video_2)
 
         if debug:
-            print(f"\n=== Wan VACE Prep Batch ===")
-            print(f"Video 1: {video_1.shape[0]} frames @ {width}x{height}")
-            print(f"Video 2: {video_2.shape[0]} frames @ {width}x{height}")
-            print(f"Flags: {'FIRST ' if is_first else ''}{'LAST' if is_last else 'MIDDLE' if not is_first else ''}")
-            print(f"Parameters: context={context_frames}, replace={replace_frames}, new={new_frames}")
+            print(f"\n[VACE Join Batch] === Start ===")
+            print(f"[VACE Join Batch] Video 1: {video_1.shape[0]} frames @ {width}x{height}")
+            print(f"[VACE Join Batch] Video 2: {video_2.shape[0]} frames @ {width}x{height}")
+            print(f"[VACE Join Batch] Flags: {'FIRST ' if is_first else ''}{'LAST' if is_last else 'MIDDLE' if not is_first else ''}")
+            print(f"[VACE Join Batch] Parameters: context={context_frames}, replace={replace_frames}, new={new_frames}")
 
         v1_len = video_1.shape[0]
         v2_len = video_2.shape[0]
@@ -228,13 +228,13 @@ class WanVACEPrepBatch(WanVACEPrepBase):
         length = int(control_video.shape[0])
 
         if debug:
-            print(f"\nOutputs:")
-            print(f"  control_video: {control_video.shape}")
-            print(f"  control_mask: {mask.shape}")
-            print(f"  start_images: {start_images.shape[0]} frames")
-            print(f"  end_images: {end_images.shape[0]} frames")
-            print(f"  VACE output: {context_frames * 2 + vace_count} frames ({context_frames * 2} context + {vace_count} generated)")
-            print(f"===========================\n")
+            print(f"[VACE Join Batch] Outputs:")
+            print(f"[VACE Join Batch]   control_video: {control_video.shape}")
+            print(f"[VACE Join Batch]   control_mask: {mask.shape}")
+            print(f"[VACE Join Batch]   start_images: {start_images.shape[0]} frames")
+            print(f"[VACE Join Batch]   end_images: {end_images.shape[0]} frames")
+            print(f"[VACE Join Batch]   VACE output: {context_frames * 2 + vace_count} frames ({context_frames * 2} context + {vace_count} generated)")
+            print(f"[VACE Join Batch] === End ===")
 
         return (control_video, mask, width, height, length, start_images, end_images, context_frames, replace_frames, new_frames)
 

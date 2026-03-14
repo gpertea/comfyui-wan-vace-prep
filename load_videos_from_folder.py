@@ -32,7 +32,7 @@ class LoadVideosFromFolderSimple:
     CATEGORY = "video/utility"
     DESCRIPTION = """
     Load all videos from a folder, concatenated into
-    a single image batch.  Optionally connect a 
+    a single image batch.  Optionally connect a
     VideoHelperSuite Meta Batch Manager to process
     large collections in smaller RAM-safe chunks. See
     VHS Meta Batch Manager documentation for more information.
@@ -60,14 +60,14 @@ class LoadVideosFromFolderSimple:
     def _load_all(self, video_files, folder_path, debug):
         """Load all videos at once into a single tensor."""
         if debug:
-            print(f"Loading {len(video_files)} videos from {folder_path}")
+            print(f"[Load Videos] Loading {len(video_files)} videos from {folder_path}")
 
         all_frames = []
         expected_shape = None
 
         for idx, video_path in enumerate(video_files):
             if debug:
-                print(f"[{idx+1}/{len(video_files)}]: {os.path.basename(video_path)}", end=" ... ")
+                print(f"[Load Videos] [{idx+1}/{len(video_files)}]: {os.path.basename(video_path)}", end=" ... ")
 
             frames = self._load_video_frames(video_path)
             expected_shape = self._check_resolution(frames, expected_shape, video_path)
@@ -77,11 +77,11 @@ class LoadVideosFromFolderSimple:
                 print(f"{frames.shape[0]} frames")
 
         if debug:
-            print(f"\nConcatenating {len(video_files)} videos...")
+            print(f"[Load Videos] Concatenating {len(video_files)} videos...")
         output = torch.cat(all_frames, dim=0)
 
         if debug:
-            print(f"Done\n")
+            print(f"[Load Videos] Done")
         return (output,)
 
     def _load_batched(self, video_files, folder_path, debug, meta_batch, unique_id):
@@ -95,7 +95,7 @@ class LoadVideosFromFolderSimple:
             total_frames = self._count_total_frames(video_files)
             meta_batch.total_frames = min(meta_batch.total_frames, total_frames)
             if debug:
-                print(f"[Batched] Starting new generator for {len(video_files)} videos ({total_frames} frames) in {folder_path}")
+                print(f"[Load Videos] Batched: Starting new generator for {len(video_files)} videos ({total_frames} frames) in {folder_path}")
             meta_batch.inputs[unique_id] = self._frame_generator(video_files, debug)
 
         generator = meta_batch.inputs[unique_id]
@@ -110,7 +110,7 @@ class LoadVideosFromFolderSimple:
                 frame_tensor, video_path = next(generator)
             except StopIteration:
                 if debug:
-                    print(f"[Batched] Generator exhausted, cleaning up")
+                    print(f"[Load Videos] Batched: Generator exhausted, cleaning up")
                 meta_batch.inputs.pop(unique_id)
                 meta_batch.has_closed_inputs = True
                 break
@@ -127,7 +127,7 @@ class LoadVideosFromFolderSimple:
         output = torch.stack(batch_frames, dim=0)
 
         if debug:
-            print(f"[Batched] Yielding {output.shape[0]} frames  shape={tuple(output.shape)}")
+            print(f"[Load Videos] Batched: Yielding {output.shape[0]} frames  shape={tuple(output.shape)}")
 
         return (output,)
 
@@ -147,40 +147,39 @@ class LoadVideosFromFolderSimple:
 
     def _is_video_file(self, filename):
         """Return True if filename has a supported video extension."""
-        ext = filename.split('.')[-1].lower() if '.' in filename else ''
-        return ext in self.VIDEO_EXTENSIONS
+        _, ext = os.path.splitext(filename)
+        return ext.lstrip('.').lower() in self.VIDEO_EXTENSIONS
 
     def _load_video_frames(self, video_path):
         """Load all frames from a video file. Returns [N, H, W, C] float32 tensor."""
         container = av.open(video_path)
+        try:
+            if len(container.streams.video) == 0:
+                raise ValueError(f"No video stream found in: {video_path}")
 
-        if len(container.streams.video) == 0:
+            frames = []
+            for frame in container.decode(video=0):
+                rgb = frame.to_ndarray(format="rgb24")
+                frame_tensor = torch.from_numpy(rgb.astype(np.float32) / 255.0)
+                frames.append(frame_tensor)
+
+            if not frames:
+                raise RuntimeError(f"No frames extracted from {video_path}")
+
+            return torch.stack(frames, dim=0)
+        finally:
             container.close()
-            raise RuntimeError(f"No video stream found in: {video_path}")
-
-        frames = []
-        for frame in container.decode(video=0):
-            rgb = frame.to_ndarray(format="rgb24")
-            frame_tensor = torch.from_numpy(rgb.astype(np.float32) / 255.0)
-            frames.append(frame_tensor)
-
-        container.close()
-
-        if not frames:
-            raise RuntimeError(f"No frames extracted from {video_path}")
-
-        return torch.stack(frames, dim=0)
 
     def _check_resolution(self, frames, expected_shape, video_path):
         """
-        Verify frames match expected_shape (W, H).
+        Verify frames match expected_shape (H, W) from tensor shape[1:3].
         Returns expected_shape, initialising it from frames if not yet set.
-        Raises RuntimeError with filename on mismatch.
+        Raises ValueError with filename on mismatch.
         """
         if expected_shape is None:
             return frames.shape[1:3]
         if frames.shape[1:3] != expected_shape:
-            raise RuntimeError(
+            raise ValueError(
                 f"\nResolution mismatch\n"
                 f"  Expected: {expected_shape[1]}x{expected_shape[0]} (from first video)\n"
                 f"  Got: {frames.shape[2]}x{frames.shape[1]} in {os.path.basename(video_path)}"
@@ -188,9 +187,14 @@ class LoadVideosFromFolderSimple:
         return expected_shape
 
     def _count_total_frames(self, video_files):
-        """Fast frame count estimate using container metadata. No decoding."""
+        """Fast frame count estimate using container metadata.
+
+        Used by VHS BatchManager for progress display. Falls back to
+        full decode if the container doesn't report a frame count.
+        """
         total = 0
         for video_path in video_files:
+            container = None
             try:
                 container = av.open(video_path)
                 if len(container.streams.video) > 0:
@@ -200,9 +204,11 @@ class LoadVideosFromFolderSimple:
                     else:
                         # Container doesn't report frame count; decode to count
                         total += sum(1 for _ in container.decode(video=0))
-                container.close()
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"[Load Videos] Warning: could not count frames in {os.path.basename(video_path)}: {e}")
+            finally:
+                if container is not None:
+                    container.close()
         return total
 
     def _frame_generator(self, video_files, debug):
@@ -212,25 +218,24 @@ class LoadVideosFromFolderSimple:
         """
         for idx, video_path in enumerate(video_files):
             if debug:
-                print(f"[Batched] Opening [{idx+1}/{len(video_files)}]: {os.path.basename(video_path)}")
+                print(f"[Load Videos] Batched: Opening [{idx+1}/{len(video_files)}]: {os.path.basename(video_path)}")
 
             container = av.open(video_path)
+            try:
+                if len(container.streams.video) == 0:
+                    raise ValueError(f"No video stream found in: {video_path}")
 
-            if len(container.streams.video) == 0:
+                frame_count = 0
+                for frame in container.decode(video=0):
+                    rgb = frame.to_ndarray(format="rgb24")
+                    frame_tensor = torch.from_numpy(rgb.astype(np.float32) / 255.0)
+                    frame_count += 1
+                    yield frame_tensor, video_path
+            finally:
                 container.close()
-                raise RuntimeError(f"No video stream found in: {video_path}")
-
-            frame_count = 0
-            for frame in container.decode(video=0):
-                rgb = frame.to_ndarray(format="rgb24")
-                frame_tensor = torch.from_numpy(rgb.astype(np.float32) / 255.0)
-                frame_count += 1
-                yield frame_tensor, video_path
-
-            container.close()
 
             if debug:
-                print(f"[Batched] Finished {os.path.basename(video_path)}: {frame_count} frames")
+                print(f"[Load Videos] Batched: Finished {os.path.basename(video_path)}: {frame_count} frames")
 
 NODE_CLASS_MAPPINGS = {
     "LoadVideosFromFolderSimple": LoadVideosFromFolderSimple

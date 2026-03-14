@@ -1,33 +1,9 @@
 import torch
-from .wan_vace_prep import WanVACEPrepBase
+from .vace_join import WanVACEPrepBase
 
 
-class VACESmooth(WanVACEPrepBase):
-    """
-    VACE prep for a single video with an inline selection boundary.
-
-    Instead of taking two separate video clips, this node accepts one
-    continuous video (an IMAGE batch from Load Video) plus a frame
-    selection from Visual Frame Selector, then splits the video at
-    the selection boundary and runs the same control-building logic
-    as WanVACEPrep.
-
-    Typical use-case: you have one long clip and want VACE to smooth
-    a transition at a specific point inside it without pre-splitting
-    the clip manually.
-
-    Parameters
-    ----------
-    images         : IMAGE batch — the full source video
-    start_frame    : INT  — first frame of the selected range (from VFS)
-    end_frame      : INT  — last frame of the selected range, exclusive (from VFS)
-    context_frames : frames of context to pull from each side of the split
-    new_frames     : additional new frames to insert within the selected range,
-                     expanding the video length beyond the original selection size
-
-    Output signature mirrors WanVACEPrep exactly so the downstream
-    sampler wiring is identical.
-    """
+class VACEInline(WanVACEPrepBase):
+    """Single-video VACE prep: splits at a VFS selection boundary."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -76,6 +52,7 @@ class VACESmooth(WanVACEPrepBase):
     on each side condition the generation. new_frames optionally inserts
     additional frames within the selected range, expanding the video length.
     """
+    EXPERIMENTAL = True
 
     # ------------------------------------------------------------------
     # Public entry point
@@ -91,8 +68,8 @@ class VACESmooth(WanVACEPrepBase):
         # video_1: everything up to (but not including) the selection
         # video_2: everything from end_frame onwards
         # The selected range itself is treated as the gap VACE will fill/smooth.
-        video_1 = images[:start_frame] if start_frame > 0 else images[:1]
-        video_2 = images[end_frame:] if end_frame < total_frames else images[-1:]
+        video_1 = images[:start_frame]
+        video_2 = images[end_frame:]
 
         # ── 3. Validate dimensions (delegates to base) ──────────────────
         width, height = self._validate_dimensions(video_1, video_2)
@@ -122,12 +99,15 @@ class VACESmooth(WanVACEPrepBase):
         # Wan requires 4n+1 frames. The base class adds 1 to vace_count, so we
         # need new_frames to be a multiple of 4. Snap selection_size up to the
         # nearest 4n+1 before subtracting 1 so that new_frames ends up as 4n.
+        #
+        # Example: selection_size=10 → remainder=10%4=2 → (1-2)%4=3 → snapped=13 (4*3+1)
+        #          new_frames = snapped - 1 + user_new_frames = 12 + 0 = 12 (4n) ✓
         selection_size = end_frame - start_frame
         remainder = selection_size % 4
         snapped_size = selection_size if remainder == 1 else selection_size + ((1 - remainder) % 4)
         if snapped_size != selection_size:
             print(
-                f"[VACE Smooth] Selection size {selection_size} is not 4n+1. "
+                f"[VACE Inline] Selection size {selection_size} is not 4n+1. "
                 f"Snapping up to {snapped_size} frames. "
                 f"Output will be {snapped_size - selection_size} frame(s) longer than input."
             )
@@ -179,9 +159,9 @@ class VACESmooth(WanVACEPrepBase):
             )
 
 NODE_CLASS_MAPPINGS = {
-    "VACESmooth": VACESmooth
+    "VACEInline": VACEInline
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "VACESmooth": "🪐 VACE Smooth"
+    "VACEInline": "🪐 VACE Inline (Experimental)"
 }
