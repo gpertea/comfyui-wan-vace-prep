@@ -156,8 +156,9 @@ function updateStatusLine(ctx) {
 
     const count = state.selection.endFrame - state.selection.startFrame + 1;
     const total = state.video.totalFrames;
+    const fps = state.video.fps > 0 ? state.video.fps.toFixed(1) : "N/A";
 
-    dom.statusText.textContent = `Total frames: ${total} | Selected frames: ${count}`;
+    dom.statusText.textContent = `Total frames: ${total} | Selected frames: ${count} | FPS: ${fps}`;
 }
 
 // ── DOM Construction ───────────────────────────────────────────────
