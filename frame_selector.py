@@ -140,15 +140,35 @@ class VisualFrameSelector:
                 total_frames = sum(1 for _ in container.decode(video=0))
                 container.seek(0)
 
+            # --- Log Inputs --------------------------------------------------
+            print(f"[VisualFrameSelector] Inputs: video='{os.path.basename(video)}', current_frame={current_frame}, start_frame={start_frame}, end_frame={end_frame}")
+
             # --- Resolve selected range (inclusive, 0-based) -----------------
+            original_start = start_frame
+            original_end = end_frame
+            
             actual_start = max(0, min(start_frame, total_frames - 1))
             actual_end   = end_frame if end_frame > 0 else total_frames - 1
             actual_end   = min(actual_end, total_frames - 1)
+            
             if actual_end <= actual_start:
                 actual_end = min(actual_start + 1, total_frames - 1)
 
-            print(f"[VisualFrameSelector] start_frame: {start_frame}, actual_start: {actual_start}")
-            print(f"[VisualFrameSelector] end_frame: {end_frame}, actual_end: {actual_end}")
+            # --- Determine Adjustment Reasons --------------------------------
+            start_reason = None
+            if original_start < 0:
+                start_reason = "clamped to 0"
+            elif original_start >= total_frames:
+                start_reason = "clamped to last frame"
+            
+            end_reason = None
+            if original_end <= original_start:
+                end_reason = "adjusted to ensure range > 0"
+            elif original_end >= total_frames:
+                end_reason = "clamped to last frame"
+            elif original_end <= 0 and actual_end != original_end:
+                 end_reason = "defaulted to last frame"
+
             # --- Decode selected frames --------------------------------------
             selected_rgb = self._decode_video_frames(
                 container, video_stream, actual_start, actual_end
@@ -174,6 +194,19 @@ class VisualFrameSelector:
 
             # --- Audio -------------------------------------------------------
             audio = self._extract_audio(video_path)
+            audio_status = "extracted" if audio and audio.get("waveform").shape[2] > 1 else "none/placeholder"
+
+            # --- Log Outputs -------------------------------------------------
+            start_log = f"start_frame: {actual_start}"
+            if start_reason:
+                start_log = f"start_frame: {original_start} -> {actual_start} (Reason: {start_reason})"
+            
+            end_log = f"end_frame: {actual_end}"
+            if end_reason:
+                end_log = f"end_frame: {original_end} -> {actual_end} (Reason: {end_reason})"
+
+            print(f"[VisualFrameSelector] Outputs: {start_log}, {end_log}, selected_count={len(selected_rgb)}, total_frames={total_frames}, fps={fps:.2f}, audio={audio_status}")
+
             if audio is None:
                 # Silent placeholder so the AUDIO output is always valid
                 audio = {"waveform": torch.zeros(1, 2, 1), "sample_rate": 44100}
