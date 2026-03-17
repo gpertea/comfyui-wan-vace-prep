@@ -148,17 +148,27 @@ function updateStatusLine(ctx) {
 
     if (!state.video.loaded) {
         dom.statusRow.style.display = "none";
+        dom.infoRow.style.display = "none";
         if (wasVisible && ctx._remeasureControls) ctx._remeasureControls();
         return;
     }
     dom.statusRow.style.display = "flex";
+    dom.infoRow.style.display = "flex";
     if (!wasVisible && ctx._remeasureControls) ctx._remeasureControls();
 
     const count = state.selection.endFrame - state.selection.startFrame + 1;
     const total = state.video.totalFrames;
-    const fps = state.video.fps > 0 ? state.video.fps.toFixed(1) : "N/A";
 
-    dom.statusText.textContent = `Total frames: ${total} | Selected frames: ${count} | FPS: ${fps}`;
+    // First bar: Total and Selected frames
+    dom.statusText.textContent = `Total frames: ${total} | Selected frames: ${count}`;
+
+    // Second bar: Resolution and FPS
+    const width = state.video.width;
+    const height = state.video.height;
+    dom.resolutionText.textContent = `Resolution: ${width}x${height}`;
+
+    const fps = state.video.fps > 0 ? state.video.fps.toFixed(1) : "N/A";
+    dom.fpsText.textContent = `FPS: ${fps}`;
 }
 
 // ── DOM Construction ───────────────────────────────────────────────
@@ -237,13 +247,30 @@ function buildControlBar() {
     statusText.textContent = "";
     statusRow.appendChild(statusText);
 
-    controlBar.append(row1, row2, statusRow);
+    // Second info bar
+    const infoRow = document.createElement("div");
+    infoRow.style.cssText = "display:none;gap:8px;align-items:center;justify-content:center;margin-top:2px;";
+
+    const resolutionText = document.createElement("span");
+    resolutionText.style.cssText = "color:#888;font-size:11px;white-space:nowrap;";
+    resolutionText.textContent = "";
+    infoRow.appendChild(resolutionText);
+
+    const fpsText = document.createElement("span");
+    fpsText.style.cssText = "color:#888;font-size:11px;white-space:nowrap;";
+    fpsText.textContent = "";
+    infoRow.appendChild(fpsText);
+
+    controlBar.append(row1, row2, statusRow, infoRow);
 
     return {
         element: controlBar,
         buttons: { firstBtn, prevBtn, playPauseBtn, nextBtn, lastBtn, jumpInBtn, setInBtn, playRangeBtn, setOutBtn, jumpOutBtn },
         statusRow,
         statusText,
+        infoRow,
+        resolutionText,
+        fpsText,
     };
 }
 
@@ -848,6 +875,9 @@ app.registerExtension({
                     controlBar,
                     statusRow: controlBar.statusRow,
                     statusText: controlBar.statusText,
+                    infoRow: controlBar.infoRow,
+                    resolutionText: controlBar.resolutionText,
+                    fpsText: controlBar.fpsText,
                     buttons: controlBar.buttons,
                 },
                 widgets,
