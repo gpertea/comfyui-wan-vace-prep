@@ -58,10 +58,20 @@ class VisualFrameSelector:
             container.seek(target_pts, stream=video_stream)
 
         frames = []
-        frame_index = 0
+        fallback_index = None  # used only when frame.pts is unavailable
         for frame in container.decode(video=0):
+            # Derive the absolute frame index from PTS so that seeks landing
+            # on a keyframe before `start` don't corrupt the count.
+            if frame.pts is not None:
+                frame_index = round(float(frame.pts) * float(video_stream.time_base) * fps)
+                fallback_index = frame_index + 1
+            else:
+                if fallback_index is None:
+                    fallback_index = start
+                frame_index = fallback_index
+                fallback_index += 1
+
             if frame_index < start:
-                frame_index += 1
                 continue
             if end is not None and frame_index > end:
                 break
@@ -73,7 +83,6 @@ class VisualFrameSelector:
                     f"is not supported. Re-encode with h264, h265, or vp9."
                 )
             frames.append(rgb)
-            frame_index += 1
 
         return frames
 
