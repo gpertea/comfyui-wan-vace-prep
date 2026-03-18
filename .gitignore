@@ -46,3 +46,6 @@ tests/
 TODO.md
 ISSUES.md
 .aider*
+
+# Pyright config
+pyrightconfig.json
