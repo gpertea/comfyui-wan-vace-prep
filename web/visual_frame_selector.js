@@ -738,9 +738,16 @@ function setupResize(ctx) {
     // Apply minimum size immediately
     node.setSize([Math.max(node.size[0], MIN_WIDTH), Math.max(node.size[1], MIN_HEIGHT)]);
 
+    // Capture computeSize now so onResize can call it to compute the true
+    // minimum height at any given width. The video preview's computeSize
+    // returns [w, w * aspectRatio], so the required height grows with width.
+    // Using a hard-coded MIN_HEIGHT caused overflow: when the node was made
+    // wider (above MIN_WIDTH), the video needed more vertical space, but the
+    // height wasn't forced up because it was still above the low MIN_HEIGHT.
+    const origComputeSize = node.computeSize.bind(node);
+
     requestAnimationFrame(() => {
         node.minWidth = MIN_WIDTH;
-        node.minHeight = MIN_HEIGHT;
         node.lastResizePos = [...node.pos];
 
         const origOnResize = node.onResize;
@@ -748,12 +755,24 @@ function setupResize(ctx) {
             const xChanged = this.pos[0] !== this.lastResizePos[0];
             const yChanged = this.pos[1] !== this.lastResizePos[1];
 
-            if (size[0] < this.minWidth) {
-                size[0] = this.minWidth;
+            if (size[0] < MIN_WIDTH) {
+                size[0] = MIN_WIDTH;
                 if (xChanged) this.pos[0] = this.lastResizePos[0];
             }
-            if (size[1] < this.minHeight) {
-                size[1] = this.minHeight;
+
+            // origComputeSize() always computes at the node's *minimum* width
+            // (whatever LiteGraph determines), not the actual node width.
+            // At wider widths the video widget needs more height (aspect ratio),
+            // so we correct by adding the delta: (actualWidth - computedWidth) * AR.
+            const computedMinSize = origComputeSize();
+            const videoEl = ctx.dom.video;
+            const aspectRatio = (videoEl?.videoHeight && videoEl?.videoWidth)
+                ? videoEl.videoHeight / videoEl.videoWidth
+                : 9 / 16;
+            const correctedMinH = computedMinSize[1] + Math.round((size[0] - computedMinSize[0]) * aspectRatio);
+            const minH = Math.max(MIN_HEIGHT, correctedMinH);
+            if (size[1] < minH) {
+                size[1] = minH;
                 if (yChanged) this.pos[1] = this.lastResizePos[1];
             }
 
@@ -926,12 +945,6 @@ app.registerExtension({
                 // Detect unsupported renderer: if the widget's video element
                 // is not in the DOM, the renderer (e.g. Node 2.0 Vue) is managing
                 // its own elements and our controls cannot interact with them.
-                console.log("[VisualFrameSelector] Renderer check — video.isConnected:", video.isConnected,
-                    "| widget.element.isConnected:", widget.element.isConnected,
-                    "| video.readyState:", video.readyState,
-                    "| video.src:", video.src ? "set" : "empty",
-                    "| inSubgraph:", !!node.graph?.subgraph
-                );
                 if (!video.isConnected) {
                     console.warn("[VisualFrameSelector] Video element is detached from DOM — renderer not supported. Controls disabled.");
                     ctx.dom.controlsContainer.innerHTML = "";
@@ -954,7 +967,6 @@ app.registerExtension({
                 const replacementObserver = new MutationObserver(() => {
                     const current = widget.element.querySelector("video");
                     if (current && current !== ctx.dom.video) {
-                        console.log("[VisualFrameSelector] Video element replaced — re-hooking.");
                         hookVideoElement(ctx, current);
                     }
                 });
@@ -987,7 +999,6 @@ app.registerExtension({
                     }, "programmatic");
                 }
 
-                console.log("[VisualFrameSelector] Hooked into native video element");
             });
 
             // ── Video file selector callback ──
