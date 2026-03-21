@@ -18,9 +18,10 @@ class VisualFrameSelector:
         return {
             "required": {
                 "video":         (sorted(files), {"video_upload": True}),
-                "current_frame": ("INT", {"default": 0, "min": 0, "max": 1000000, "step": 1}),
                 "start_frame":   ("INT", {"default": 0, "min": 0, "max": 1000000, "step": 1}),
                 "end_frame":     ("INT", {"default": 0, "min": 0, "max": 1000000, "step": 1}),
+                "current_frame": ("INT", {"default": 0, "min": 0, "max": 1000000, "step": 1}),
+                "output_all_frames": ("BOOLEAN", {"default": False}),
             },
         }
 
@@ -127,7 +128,7 @@ class VisualFrameSelector:
     # Main
     # ------------------------------------------------------------------
 
-    def load_frames(self, video, current_frame=0, start_frame=0, end_frame=0):
+    def load_frames(self, video, current_frame=0, start_frame=0, end_frame=0, output_all_frames=False):
         video_path = folder_paths.get_annotated_filepath(video)
 
         if not os.path.exists(video_path):
@@ -191,12 +192,14 @@ class VisualFrameSelector:
             ])
 
             # --- Decode ALL frames -------------------------------------------
-            container.seek(0)
-            all_rgb = self._decode_video_frames(container, video_stream, 0, None)
-
-            all_tensor = torch.stack([
-                torch.from_numpy(f.astype(np.float32) / 255.0) for f in all_rgb
-            ])
+            if output_all_frames:
+                container.seek(0)
+                all_rgb = self._decode_video_frames(container, video_stream, 0, None)
+                all_tensor = torch.stack([
+                    torch.from_numpy(f.astype(np.float32) / 255.0) for f in all_rgb
+                ])
+            else:
+                all_tensor = torch.zeros((1, 1, 1, 3), dtype=torch.float32)
 
             container.close()
             container = None
