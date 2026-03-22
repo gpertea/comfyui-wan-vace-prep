@@ -831,6 +831,7 @@ app.registerExtension({
                 currentFrame: node.widgets.find(w => w.name === "current_frame"),
                 startFrame: node.widgets.find(w => w.name === "start_frame"),
                 endFrame: node.widgets.find(w => w.name === "end_frame"),
+                outputAllFrames: node.widgets.find(w => w.name === "output_all_frames"),
             };
 
             // ── Widget ordering ──
@@ -917,6 +918,7 @@ app.registerExtension({
                     current_frame: widgets.currentFrame?.value ?? 0,
                     start_frame: widgets.startFrame?.value ?? 0,
                     end_frame: widgets.endFrame?.value ?? 0,
+                    output_all_frames: widgets.outputAllFrames?.value ?? false,
                 };
             };
 
@@ -931,6 +933,7 @@ app.registerExtension({
                     if (widgets.currentFrame) widgets.currentFrame.value = v.current_frame ?? 0;
                     if (widgets.startFrame) widgets.startFrame.value = v.start_frame ?? 0;
                     if (widgets.endFrame) widgets.endFrame.value = v.end_frame ?? 0;
+                    if (widgets.outputAllFrames) widgets.outputAllFrames.value = v.output_all_frames ?? false;
                 }
             };
 
