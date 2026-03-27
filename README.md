@@ -1,6 +1,6 @@
 # Wan VACE Prep
 
-ComfyUI nodes for Wan VACE workflows. Control video and mask creation for transitions and extensions, plus workflow utilities.
+ComfyUI nodes for Wan VACE workflows. Control video and mask creation for transitions and extensions, plus helper nodes.
 
 ## Quick Start
 
@@ -81,7 +81,8 @@ Batch-aware version of VACE Join for processing multiple video pairs. Handles fi
 
 ### VACE Batch Context
 
-Establishes iteration context for batch video processing workflows. Manages file paths, iteration tracking, and provides first/last flags for proper handling of video sequence boundaries.
+*This node drives my [Wan VACE Video Joiner](https://github.com/stuttlepress/ComfyUI-Wan-VACE-Video-Joiner) workflow. It may not be useful outside of that context.*  
+Establishes iteration context for batch video processing workflows. Manages file paths, iteration tracking, and provides first/last flags for proper handling of video sequence boundaries. Supports an optional loop mode that generates a wrap-around transition between the last and first video for seamless looping output.
 
 ![VACE Batch Context Node](assets/vace-batch-context.png)
 
@@ -92,8 +93,9 @@ Establishes iteration context for batch video processing workflows. Manages file
 | input_list | | List of video filenames to process (STRING, force input) |
 | input_dir | | Directory containing input videos |
 | project_name | . | Project name — workflow files created under ComfyUI/output/project_name. Use period (.) for no project name. |
-| index | 0 | Current iteration index (0-based). Valid range: 0 to (number of videos - 2) |
+| index | 0 | Current iteration index (0-based). Valid range: 0 to (number of videos - 2) normally, or 0 to (number of videos - 1) when `make_loop=true` |
 | debug | false | Log iteration details to the console |
+| make_loop | false | Enable loop mode — adds one extra iteration that pairs the last video with the first, creating a seamless loop. When true, `is_first` and `is_last` are always false. |
 
 **Outputs:**
 
@@ -103,8 +105,9 @@ Establishes iteration context for batch video processing workflows. Manages file
 | workfile_prefix | Filename prefix for this iteration's work files |
 | video_1_filename | Full path to first video in current pair |
 | video_2_filename | Full path to second video in current pair |
-| is_first | True if this is the first iteration (index=0) |
-| is_last | True if this is the last iteration |
+| is_first | True if this is the first iteration (index=0). Always false when `make_loop=true`. |
+| is_last | True if this is the last iteration. Always false when `make_loop=true`. |
+| assemble_video | True on the final iteration — used to gate the assembly step. Equivalent to `is_last` when `make_loop=false`; fires on the loop-closing iteration when `make_loop=true`. |
 
 ---
 
