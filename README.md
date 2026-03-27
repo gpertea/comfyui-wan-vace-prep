@@ -39,6 +39,12 @@ For smoothly joining two video clips together. Builds VACE controls for the tran
 | end_images | Video 2 segment that comes after the transition and context frames |
 | context_frames, replace_frames, new_frames | Parameter passthrough for optional downstream wiring |
 
+
+
+https://github.com/user-attachments/assets/5b70b5af-8d88-4c0f-a5a7-cdbe0657ce8c
+
+
+
 ---
 
 ### VACE Join (Batch)
