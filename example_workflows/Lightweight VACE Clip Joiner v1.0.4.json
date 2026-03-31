@@ -800,8 +800,8 @@
       "id": 30,
       "type": "SaveVideo",
       "pos": [
-        -2290,
-        3060
+        -2720,
+        3000
       ],
       "size": [
         210,
@@ -835,8 +835,8 @@
       "id": 31,
       "type": "CreateVideo",
       "pos": [
-        -2590,
-        3060
+        -3020,
+        3000
       ],
       "size": [
         210,
@@ -1036,8 +1036,8 @@
       "id": 70,
       "type": "MarkdownNote",
       "pos": [
-        -2540,
-        3180
+        -2970,
+        3120
       ],
       "size": [
         230,
@@ -1108,8 +1108,8 @@
       "id": 58,
       "type": "ImageBatch",
       "pos": [
-        -2830,
-        3070
+        -3260,
+        3010
       ],
       "size": [
         160,
@@ -1152,8 +1152,8 @@
       "id": 16,
       "type": "VAEDecode",
       "pos": [
-        -3230,
-        3080
+        -3660,
+        3020
       ],
       "size": [
         140,
@@ -1196,8 +1196,8 @@
       "id": 57,
       "type": "ImageBatch",
       "pos": [
-        -3050,
-        3070
+        -3480,
+        3010
       ],
       "size": [
         160,
@@ -1334,9 +1334,9 @@
         "ver": "1.0.5"
       },
       "widgets_values": [
-        4,
         8,
-        24
+        8,
+        0
       ],
       "color": "#232",
       "bgcolor": "#353"
@@ -1613,8 +1613,8 @@
       "id": 1,
       "title": "Output",
       "bounding": [
-        -3350,
-        2950,
+        -3780,
+        2890,
         1380,
         350
       ],
@@ -1665,14 +1665,14 @@
   "config": {},
   "extra": {
     "ds": {
-      "scale": 1.0461538148756409,
+      "scale": 0.4436713413400487,
       "offset": [
-        4112.268982217001,
-        -1842.460940207337
+        5640.365902306408,
+        -1024.0543132464907
       ]
     },
     "workflowRendererVersion": "LG",
-    "frontendVersion": "1.41.19",
+    "frontendVersion": "1.39.19",
     "VHS_latentpreview": true,
     "VHS_latentpreviewrate": 0,
     "VHS_MetadataImage": false,
