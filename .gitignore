@@ -33,3 +33,6 @@ desktop.ini
 # Local config / secrets
 .env
 *.local
+docs/
+TODO.md
+prototype/
