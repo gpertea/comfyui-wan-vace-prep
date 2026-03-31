@@ -1,7 +1,7 @@
 [project]
 name = "comfyui-wan-vace-prep"
 description = "ComfyUI nodes for smooth video transitions and extensions using Wan VACE."
-version = "1.0.13"
+version = "1.0.14"
 license = { text = "MIT" }
 
 dependencies = []
