@@ -661,6 +661,16 @@ async function loadVideo(ctx, filename) {
                 },
             }, "api");
 
+            // output_all_frames doesn't depend on the video element being
+            // present — restore it immediately so it isn't lost if dom.video
+            // is still null when syncWhenReady fires below.  Use
+            // syncWidgetValue so the widget callback fires and updates the
+            // display in both the canvas and Vue renderers.
+            const savedOAF = ctx._savedFrameValues;
+            if (savedOAF?.output_all_frames !== undefined) {
+                syncWidgetValue(widgets.outputAllFrames, savedOAF.output_all_frames);
+            }
+
             const restoreFromWidgets = () => {
                 // Use values saved by onConfigure (by name) rather than
                 // reading widgets, which may have been clobbered by
@@ -669,6 +679,12 @@ async function loadVideo(ctx, filename) {
                 const sf = saved ? clamp(saved.start_frame, 0, maxFrame) : 0;
                 const ef = saved ? clamp(saved.end_frame, 0, maxFrame) : defaultEnd;
                 const cf = saved ? clamp(saved.current_frame, 0, maxFrame) : 0;
+                // Belt-and-suspenders: re-apply output_all_frames in case
+                // something between the early restore above and loadedmetadata
+                // clobbered the value.
+                if (saved?.output_all_frames !== undefined) {
+                    syncWidgetValue(widgets.outputAllFrames, saved.output_all_frames);
+                }
                 updateState(ctx, {
                     selection: {
                         currentFrame: cf,
@@ -933,7 +949,9 @@ app.registerExtension({
                     if (widgets.currentFrame) widgets.currentFrame.value = v.current_frame ?? 0;
                     if (widgets.startFrame) widgets.startFrame.value = v.start_frame ?? 0;
                     if (widgets.endFrame) widgets.endFrame.value = v.end_frame ?? 0;
-                    if (widgets.outputAllFrames) widgets.outputAllFrames.value = v.output_all_frames ?? false;
+                    // Use syncWidgetValue so the widget callback fires and
+                    // the display updates in both the canvas and Vue renderers.
+                    syncWidgetValue(widgets.outputAllFrames, v.output_all_frames ?? false);
                 }
             };
 
@@ -1083,6 +1101,17 @@ app.registerExtension({
                     }
                     // Re-find the video element — ComfyUI may have replaced it
                     rehookVideo(ctx);
+                    // If this is the first call (during configure() positional
+                    // restore, before the double-RAF fires), pre-set the filename
+                    // so loadVideo treats this as a workflow restore rather than
+                    // a brand-new video selection.  Without this, isNewVideo=true
+                    // and frame/output_all_frames values are reset to defaults
+                    // instead of being read from vfs_frame_values.
+                    // User-initiated changes (initialLoadDone already true) are
+                    // unaffected and still take the new-video path.
+                    if (!initialLoadDone) {
+                        state.video.filename = value;
+                    }
                     initialLoadDone = true;
                     await loadVideo(ctx, value);
                 };
