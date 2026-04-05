@@ -165,7 +165,15 @@ function updateStatusLine(ctx) {
     // Second bar: Resolution and FPS
     const width = state.video.width;
     const height = state.video.height;
-    dom.resolutionText.textContent = `Resolution: ${width}x${height}`;
+    if (ctx.widgets.divisibleBy16?.value && width > 0 && height > 0) {
+        const sw = Math.ceil(width / 16) * 16;
+        const sh = Math.ceil(height / 16) * 16;
+        dom.resolutionText.textContent = (sw !== width || sh !== height)
+            ? `Resolution: ${width}×${height} → ${sw}×${sh}`
+            : `Resolution: ${width}×${height} (×16 ✓)`;
+    } else {
+        dom.resolutionText.textContent = `Resolution: ${width}×${height}`;
+    }
 
     const fps = state.video.fps > 0 ? state.video.fps.toFixed(1) : "N/A";
     dom.fpsText.textContent = `FPS: ${fps}`;
@@ -848,6 +856,7 @@ app.registerExtension({
                 startFrame: node.widgets.find(w => w.name === "start_frame"),
                 endFrame: node.widgets.find(w => w.name === "end_frame"),
                 outputAllFrames: node.widgets.find(w => w.name === "output_all_frames"),
+                divisibleBy16:      node.widgets.find(w => w.name === "divisible_by_16"),
             };
 
             // ── Widget ordering ──
@@ -935,6 +944,7 @@ app.registerExtension({
                     start_frame: widgets.startFrame?.value ?? 0,
                     end_frame: widgets.endFrame?.value ?? 0,
                     output_all_frames: widgets.outputAllFrames?.value ?? false,
+                    divisible_by_16: widgets.divisibleBy16?.value ?? false,
                 };
             };
 
@@ -952,6 +962,7 @@ app.registerExtension({
                     // Use syncWidgetValue so the widget callback fires and
                     // the display updates in both the canvas and Vue renderers.
                     syncWidgetValue(widgets.outputAllFrames, v.output_all_frames ?? false);
+                    syncWidgetValue(widgets.divisibleBy16, v.divisible_by_16 ?? false);
                 }
             };
 
@@ -1126,6 +1137,13 @@ app.registerExtension({
                         if (!initialLoadDone && widgets.video.value) {
                             initialLoadDone = true;
                             state.video.filename = widgets.video.value;
+                            // Drive ComfyUI's native video-preview widget to set
+                            // the <video> src. In newer ComfyUI frontends the
+                            // callback is not called during configure/restore, so
+                            // we invoke it explicitly here.
+                            if (origVideoCallback) {
+                                origVideoCallback.call(widgets.video, widgets.video.value);
+                            }
                             rehookVideo(ctx);
                             loadVideo(ctx, widgets.video.value);
                         }
