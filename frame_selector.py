@@ -1,3 +1,4 @@
+import math
 import os
 import torch
 import numpy as np
@@ -22,6 +23,7 @@ class VisualFrameSelector:
                 "end_frame":     ("INT", {"default": 0, "min": 0, "max": 1000000, "step": 1}),
                 "current_frame": ("INT", {"default": 0, "min": 0, "max": 1000000, "step": 1}),
                 "output_all_frames": ("BOOLEAN", {"default": False}),
+                "divisible_by_16":   ("BOOLEAN", {"default": False, "tooltip": "Snap output frame dimensions up to the nearest multiple of 16 (required by many video AI models)."}),
             },
         }
 
@@ -128,7 +130,7 @@ class VisualFrameSelector:
     # Main
     # ------------------------------------------------------------------
 
-    def load_frames(self, video, current_frame=0, start_frame=0, end_frame=0, output_all_frames=False):
+    def load_frames(self, video, current_frame=0, start_frame=0, end_frame=0, output_all_frames=False, divisible_by_16=False):
         video_path = folder_paths.get_annotated_filepath(video)
 
         if not os.path.exists(video_path):
@@ -200,6 +202,22 @@ class VisualFrameSelector:
                 ])
             else:
                 all_tensor = torch.zeros((1, 1, 1, 3), dtype=torch.float32)
+
+            # --- Snap resolution to nearest multiple of 16 (ceiling) ----------
+            if divisible_by_16:
+                import torch.nn.functional as F
+                src_h, src_w = selected_tensor.shape[1], selected_tensor.shape[2]
+                snap_w = math.ceil(src_w / 16) * 16
+                snap_h = math.ceil(src_h / 16) * 16
+                if snap_w != src_w or snap_h != src_h:
+                    t = selected_tensor.permute(0, 3, 1, 2)
+                    t = F.interpolate(t, size=(snap_h, snap_w), mode="bilinear", align_corners=False)
+                    selected_tensor = t.permute(0, 2, 3, 1)
+                    if output_all_frames and all_tensor.shape[1] > 1:
+                        t = all_tensor.permute(0, 3, 1, 2)
+                        t = F.interpolate(t, size=(snap_h, snap_w), mode="bilinear", align_corners=False)
+                        all_tensor = t.permute(0, 2, 3, 1)
+                    print(f"[VisualFrameSelector] divisible_by_16: {src_w}×{src_h} → {snap_w}×{snap_h}")
 
             container.close()
             container = None
