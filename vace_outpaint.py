@@ -4,11 +4,13 @@ import io
 import numpy as np
 import server
 import torch
+import torch.nn.functional as F
 from aiohttp import web
 from PIL import Image
 
 _GRID = 16
-_MIN_DIM = 32  # smaller than this is not a real video frame
+_MIN_DIM = 32           # smaller than this is not a real video frame
+_DEFAULT_PAD_FACTOR = 0.3  # default upward padding as a fraction of source height
 
 # Module-level frame cache: str(node_id) -> {"width", "height", "frame_count", "frames"}
 # Populated on each node execution; consumed by the JS widget via API.
@@ -82,7 +84,7 @@ class VACEOutpaintLayout:
 
         # Fallback: widget hasn't set crop values yet (first run, uninitialized).
         if crop_w < _GRID or crop_h < _GRID:
-            pad = max(_GRID, round(src_h * 0.3 / _GRID) * _GRID)
+            pad = max(_GRID, round(src_h * _DEFAULT_PAD_FACTOR / _GRID) * _GRID)
             crop_x = 0
             crop_y = -pad
             crop_w = round(src_w / _GRID) * _GRID
@@ -106,7 +108,7 @@ class VACEOutpaintLayout:
         #
         # The output window top-left is (crop_x, crop_y) in source pixel space.
         # A negative crop_x / crop_y means the window extends to the left / top
-        # of the source — those regions are padded (black) and masked (white).
+        # of the source — those regions are padded (gray, 0.5) and masked (white).
         #
         # For each output pixel (px, py), the corresponding source pixel is
         #   (crop_x + px, crop_y + py).
@@ -144,7 +146,6 @@ class VACEOutpaintLayout:
         eff_h = output_height if output_height >= _GRID else out_h
 
         if eff_w != out_w or eff_h != out_h:
-            import torch.nn.functional as F
             cv = control_video.permute(0, 3, 1, 2)                               # (N,3,H,W)
             cv = F.interpolate(cv, size=(eff_h, eff_w), mode="bilinear", align_corners=False)
             control_video = cv.permute(0, 2, 3, 1)                               # (N,H,W,3)
