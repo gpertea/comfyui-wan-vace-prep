@@ -887,30 +887,6 @@
       "bgcolor": "#653"
     },
     {
-      "id": 36,
-      "type": "MarkdownNote",
-      "pos": [
-        -4840,
-        2210
-      ],
-      "size": [
-        460,
-        600
-      ],
-      "flags": {},
-      "order": 9,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "title": "README",
-      "properties": {},
-      "widgets_values": [
-        "[Github](https://github.com/stuttlepress/ComfyUI-Wan-VACE-Video-Joiner) | [CivitAI](https://civitai.com/models/2277993) \n\n*Note: There is a heavier version of this workflow with more options available [here](https://civitai.com/models/2024299) or at the Github link above. It's useful for joining a large number of clips automatically. It also offers some methods for mitigating color/brightness shift that VACE can sometimes introduce.*\n\n---\n\n# How to Use This Workflow  \nMost of this information can also be found in the cyan notes scattered thoughout the workflow.\n\n## 1. Install the [*ComfyUI-Wan-VACE-Prep*](https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep) node pack.\n\nIt's a tiny package with no dependencies, so it is very unlikely to break your system, if you worry about such things.\n\nIf you don't already have the node, you can open the Manager and install it either from the *Missing Nodes* section, or search for **Wan VACE Prep**.\n\n## 2. Select models appropriate for your system\n- Select your VACE models in the *Load* group. \n- Select or disable speedup loras.\n\n## 3. Load your input videos  \nDrag and drop your input videos onto the **Load Video** nodes, or use the *choose file to upload* UI to select your videos. Both videos should be the same resolution and frame rate.\n\n## 4. Run the workflow\nThe joined video will be placed in your ComfyUI *output* directory, named something like `VACE joined_0001.mp4`\n"
-      ],
-      "color": "#146e47",
-      "bgcolor": "#005a33"
-    },
-    {
       "id": 50,
       "type": "MarkdownNote",
       "pos": [
@@ -922,7 +898,7 @@
         170
       ],
       "flags": {},
-      "order": 10,
+      "order": 9,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -946,7 +922,7 @@
         316.3437514305115
       ],
       "flags": {},
-      "order": 11,
+      "order": 10,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -983,7 +959,7 @@
         140
       ],
       "flags": {},
-      "order": 12,
+      "order": 11,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -1007,7 +983,7 @@
         316.3437514305115
       ],
       "flags": {},
-      "order": 13,
+      "order": 12,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -1044,7 +1020,7 @@
         88
       ],
       "flags": {},
-      "order": 14,
+      "order": 13,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -1068,7 +1044,7 @@
         230
       ],
       "flags": {},
-      "order": 15,
+      "order": 14,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -1079,30 +1055,6 @@
       ],
       "color": "#233",
       "bgcolor": "#355"
-    },
-    {
-      "id": 52,
-      "type": "MarkdownNote",
-      "pos": [
-        -5230,
-        1740
-      ],
-      "size": [
-        310,
-        280
-      ],
-      "flags": {},
-      "order": 16,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "title": "Changelog",
-      "properties": {},
-      "widgets_values": [
-        "[Github](https://github.com/stuttlepress/ComfyUI-Wan-VACE-Video-Joiner) | [CivitAI](https://civitai.com/models/2277993) \n\n- **v1.0.4** Documentation updates, custom node changes. \n- **v1.0.3** Image Batch node fix.  \nI don't quite understand the sequence of events, but since I updated ComfyUI to 0.7.0, the *Batch Images* node is back to its old static self. The dynamic behavior it had when I released this workflow is gone. I don't *think* I accidentally used a custom version of that node previously, but that is actually the most likely explanation. Anyway, this is hopefully the end of `Prompt outputs failed validation: BatchImagesNode: - Required input is missing: image1` messages.\n- **v1.0.2** Core custom node change.\n  - The VACE node I began with wasn't quite flexible enough, so I moved to [my own custom node](https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep) instead.  \n\n- **v1.0.0** Initial release. "
-      ],
-      "color": "#2a363b",
-      "bgcolor": "#3f5159"
     },
     {
       "id": 58,
@@ -1340,6 +1292,54 @@
       ],
       "color": "#232",
       "bgcolor": "#353"
+    },
+    {
+      "id": 52,
+      "type": "MarkdownNote",
+      "pos": [
+        -5230,
+        1740
+      ],
+      "size": [
+        310,
+        280
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "Changelog",
+      "properties": {},
+      "widgets_values": [
+        "[Github](https://github.com/stuttlepress/ComfyUI-Wan-VACE-Video-Joiner) | [CivitAI](https://civitai.com/models/2277993) \n\n- **v1.0.4** Documentation updates, custom node changes. \n- **v1.0.3** Image Batch node fix.  \nI don't quite understand the sequence of events, but since I updated ComfyUI to 0.7.0, the *Batch Images* node is back to its old static self. The dynamic behavior it had when I released this workflow is gone. I don't *think* I accidentally used a custom version of that node previously, but that is actually the most likely explanation. Anyway, this is hopefully the end of `Prompt outputs failed validation: BatchImagesNode: - Required input is missing: image1` messages.\n- **v1.0.2** Core custom node change.\n  - The VACE node I began with wasn't quite flexible enough, so I moved to [my own custom node](https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep) instead.  \n\n- **v1.0.0** Initial release. "
+      ],
+      "color": "#2a363b",
+      "bgcolor": "#3f5159"
+    },
+    {
+      "id": 36,
+      "type": "MarkdownNote",
+      "pos": [
+        -4840,
+        2210
+      ],
+      "size": [
+        460,
+        600
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "README",
+      "properties": {},
+      "widgets_values": [
+        "[Github](https://github.com/stuttlepress/ComfyUI-Wan-VACE-Video-Joiner) | [CivitAI](https://civitai.com/models/2277993)  \n\n***\n*You're free to do whatever you want with this workflow, but it makes me feel good when you give me credit. Redistributing it without attribution is kind of lame.*\n***\n\n*Note: There is a heavier version of this workflow with more options available [here](https://civitai.com/models/2024299) or at the Github link above. It's useful for joining a large number of clips automatically. It also offers some methods for mitigating color/brightness shift that VACE can sometimes introduce.*\n\n***\n\n# How to Use This Workflow  \nMost of this information can also be found in the cyan notes scattered thoughout the workflow.\n\n## 1. Install the [*ComfyUI-Wan-VACE-Prep*](https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep) node pack.\n\nIt's a tiny package with no dependencies, so it is very unlikely to break your system, if you worry about such things.\n\nIf you don't already have the node, you can open the Manager and install it either from the *Missing Nodes* section, or search for **Wan VACE Prep**.\n\n## 2. Select models appropriate for your system\n- Select your VACE models in the *Load* group. \n- Select or disable speedup loras.\n\n## 3. Load your input videos  \nDrag and drop your input videos onto the **Load Video** nodes, or use the *choose file to upload* UI to select your videos. Both videos should be the same resolution and frame rate.\n\n## 4. Run the workflow\nThe joined video will be placed in your ComfyUI *output* directory, named something like `VACE joined_0001.mp4`\n"
+      ],
+      "color": "#146e47",
+      "bgcolor": "#005a33"
     }
   ],
   "links": [
@@ -1665,10 +1665,10 @@
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.4436713413400487,
+      "scale": 0.8645899296492906,
       "offset": [
-        5640.365902306408,
-        -1024.0543132464907
+        5394.73997253417,
+        -1530.972755519333
       ]
     },
     "workflowRendererVersion": "LG",

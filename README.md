@@ -1,6 +1,6 @@
 # Wan VACE Prep
 
-ComfyUI nodes for Wan VACE workflows. Control video and mask creation for transitions and extensions, plus helper nodes.
+This is a small collection of ComfyUI nodes designed to help make common Wan VACE tasks less complicated.
 
 ## Quick Start
 
@@ -15,11 +15,13 @@ git clone https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep
 
 ## Nodes
 
-### VACE Outpaint Prep
+### VACE Outpaint
 
-Prepares a video for outpainting using an interactive canvas widget. Position and size an output window over your source frames — regions outside the source become the outpaint area. Builds a VACE control video and binary mask ready for generation.
+Prepares a video for outpainting using an interactive canvas widget. Position and size an output window over your source frames — regions outside the source become the outpaint area. Builds a VACE control video and mask ready for generation.
 
-![VACE Outpaint Prep Node](assets/vace-outpaint.png)
+![VACE Outpaint Node](assets/vace-outpaint.png)
+
+> **Nodes 2.0 incompatibility:** This node is known to malfunction under ComfyUI's Nodes 2.0 renderer. No fix is planned until ComfyUI publishes node development documentation.
 
 **Parameters:**
 
@@ -199,6 +201,8 @@ See the VHS Meta Batch Manager node documentation for more information.
 **4n+1 frame rule.** The Wan model generates 4n+1 frames at a time. If you request a different count, it silently rounds down to the nearest 4n+1. For this reason, parameters are restricted to multiples of 4 or 4n+1, and when necessary the nodes add +1 to the generated frame count.
 
 **Class names vs. display names.** Some internal class names (e.g., `WanVACEPrep`) don't match the current display names (e.g., "VACE Join"). This is intentional — renaming classes would break existing workflows that reference them. Once ComfyUI's node renaming API is stable, a refactoring pass will align them.
+
+**Nodes 2.0 renderer.** These nodes have not been tested under ComfyUI's Nodes 2.0 renderer and may or may not work correctly with it. Testing and support will be added sometime after ComfyUI publishes documentation for node developers to work from.
 
 ## License
 

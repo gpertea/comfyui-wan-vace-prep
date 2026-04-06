@@ -839,30 +839,6 @@
       "bgcolor": "#653"
     },
     {
-      "id": 68,
-      "type": "MarkdownNote",
-      "pos": [
-        -5270,
-        1630
-      ],
-      "size": [
-        320,
-        130
-      ],
-      "flags": {},
-      "order": 5,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "title": "Changelog",
-      "properties": {},
-      "widgets_values": [
-        "[Github](https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep/) | [CivitAI](https://civitai.com/models/2306202) \n\n- **v1.0.1** Minor documentation update.\n- **v1.0.0** Initial release. "
-      ],
-      "color": "#2a363b",
-      "bgcolor": "#3f5159"
-    },
-    {
       "id": 70,
       "type": "MarkdownNote",
       "pos": [
@@ -874,7 +850,7 @@
         590
       ],
       "flags": {},
-      "order": 6,
+      "order": 5,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -898,7 +874,7 @@
         410
       ],
       "flags": {},
-      "order": 7,
+      "order": 6,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -934,7 +910,7 @@
         170
       ],
       "flags": {},
-      "order": 8,
+      "order": 7,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -958,7 +934,7 @@
         140
       ],
       "flags": {},
-      "order": 9,
+      "order": 8,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -1024,7 +1000,7 @@
         230
       ],
       "flags": {},
-      "order": 10,
+      "order": 9,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -1048,7 +1024,7 @@
         190
       ],
       "flags": {},
-      "order": 11,
+      "order": 10,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -1072,7 +1048,7 @@
         310
       ],
       "flags": {},
-      "order": 12,
+      "order": 11,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -1096,7 +1072,7 @@
         290
       ],
       "flags": {},
-      "order": 13,
+      "order": 12,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -1155,7 +1131,7 @@
         88
       ],
       "flags": {},
-      "order": 14,
+      "order": 13,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -1179,17 +1155,41 @@
         610
       ],
       "flags": {},
-      "order": 15,
+      "order": 14,
       "mode": 0,
       "inputs": [],
       "outputs": [],
       "title": "README",
       "properties": {},
       "widgets_values": [
-        "[Github](https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep/) | [CivitAI](https://civitai.com/models/2306202)  \n\n---\n\n# How to Use This Workflow\n\nMost of this information can also be found in the cyan notes scattered thoughout the workflow.\n\n## 1. Install the [*ComfyUI-Wan-VACE-Prep*](https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep) node pack.\n\nIt's a tiny package with no dependencies, so it is very unlikely to break your system, if you worry about such things.\n\nIf you don't already have the node, you can open the Manager and install it either from the *Missing Nodes* section, or search for **Wan VACE Prep**.\n\n\n## 2. Select models appropriate for your system\n- Select your VACE models in the *Load* group. \n- Select or disable speedup loras.\n\n\n## 3. Load your input video  \nDrag and drop your input video onto the **Load Video** node, or use the *choose file to upload* UI to select it.\n\n\n## 4. Run the workflow\nThe extended video will be placed in your ComfyUI *output* directory, named something like `VACE_extend_0001.mp4`\n"
+        "[Github](https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep) | [CivitAI](https://civitai.com/user/__Bob__/models)  \n***\n*You're free to do whatever you want with this workflow, but it makes me feel good when you give me credit. Redistributing it without attribution is kind of lame.*\n\n***\n\n# How to Use This Workflow\n\nMost of this information can also be found in the cyan notes scattered thoughout the workflow.\n\n## 1. Install the [*ComfyUI-Wan-VACE-Prep*](https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep) node pack.\n\nIt's a tiny package with no dependencies, so it is very unlikely to break your system, if you worry about such things.\n\nIf you don't already have the node, you can open the Manager and install it either from the *Missing Nodes* section, or search for **Wan VACE Prep**.\n\n\n## 2. Select models appropriate for your system\n- Select your VACE models in the *Load* group. \n- Select or disable speedup loras.\n\n\n## 3. Load your input video  \nDrag and drop your input video onto the **Load Video** node, or use the *choose file to upload* UI to select it.\n\n\n## 4. Run the workflow\nThe extended video will be placed in your ComfyUI *output* directory, named something like `VACE_extend_0001.mp4`\n"
       ],
       "color": "#146e47",
       "bgcolor": "#005a33"
+    },
+    {
+      "id": 68,
+      "type": "MarkdownNote",
+      "pos": [
+        -5270,
+        1630
+      ],
+      "size": [
+        320,
+        130
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "Changelog",
+      "properties": {},
+      "widgets_values": [
+        "[Github](https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep) | [CivitAI](https://civitai.com/user/__Bob__/models)  \n\n\n- **v1.0.1** Minor documentation update.\n- **v1.0.0** Initial release. "
+      ],
+      "color": "#2a363b",
+      "bgcolor": "#3f5159"
     }
   ],
   "links": [
@@ -1483,14 +1483,14 @@
   "config": {},
   "extra": {
     "ds": {
-      "scale": 1.1,
+      "scale": 0.7513148009015777,
       "offset": [
-        4282.5906877446905,
-        -2106.5221174702774
+        5265.2778134936725,
+        -1512.45638562136
       ]
     },
     "workflowRendererVersion": "LG",
-    "frontendVersion": "1.41.19",
+    "frontendVersion": "1.39.19",
     "VHS_latentpreview": true,
     "VHS_latentpreviewrate": 0,
     "VHS_MetadataImage": false,
