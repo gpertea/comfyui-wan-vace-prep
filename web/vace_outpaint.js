@@ -5,7 +5,7 @@ import { api } from "../../scripts/api.js";
 
 const NODE_CLASS  = "VACEOutpaintLayout";
 const API_PREFIX  = "/vace_outpaint";
-const CANVAS_H    = 320;   // fixed canvas area height (px)
+const CANVAS_H    = 320;   // minimum canvas area height (px)
 const MARGIN      = 22;    // canvas margin around source frame (px)
 const GRID        = 16;    // quantisation grid (source px)
 const OVERHANG    = 1;     // minimum required outpaint (source px)
@@ -44,6 +44,27 @@ function quantizeSrc(s) {
     };
 }
 
+/** Adjust outW/outH AR to match cropAR (no-op when outW/outH are unset).
+ *  preserveArea=true keeps pixel count constant (used by preset chips).
+ *  preserveArea=false keeps outW fixed, adjusts only outH (used by drag-resize). */
+function syncOutToAR(st, preserveArea = false) {
+    if (st.outW >= GRID && st.outH >= GRID) {
+        if (preserveArea) {
+            const area = st.outW * st.outH;
+            st.outW = Math.max(GRID, Math.round(Math.sqrt(area * st.cropAR) / GRID) * GRID);
+        }
+        st.outH = Math.max(GRID, Math.round(st.outW / st.cropAR / GRID) * GRID);
+    }
+}
+
+/** Output resolution: source pixel area shaped to current cropAR. */
+function defaultOut(st) {
+    const area = st.srcW * st.srcH;
+    const w = Math.max(GRID, Math.round(Math.sqrt(area * st.cropAR) / GRID) * GRID);
+    const h = Math.max(GRID, Math.round(w / st.cropAR / GRID) * GRID);
+    return { w, h };
+}
+
 /** Enforce overlap constraint: crop must intersect source by at least OVERHANG px. */
 function clampToValid(s, srcW, srcH) {
     const c = { ...s };
@@ -75,7 +96,7 @@ function createState() {
         arLocked: true,
         initialized: false,
         view: { zoom: 1.0, panX: 0, panY: 0 },
-        outW: 0, outH: 0,  // 0 = auto (same as crop box)
+        outW: 0, outH: 0,
     };
 }
 
@@ -93,7 +114,7 @@ function initLayout(st, wrapEl) {
     const W = wrapEl.clientWidth;
     if (W <= 0) return false;
     const maxW = W - MARGIN * 2;
-    const maxH = CANVAS_H - MARGIN * 2;
+    const maxH = wrapEl.clientHeight - MARGIN * 2;
     const ar   = st.srcW / st.srcH;
     // Fit source frame inside (maxW × maxH) while preserving aspect ratio.
     let sfW, sfH;
@@ -105,7 +126,7 @@ function initLayout(st, wrapEl) {
         sfW = Math.round(maxH * ar);
     }
     const sfX = Math.round((W - sfW) / 2);
-    const sfY = Math.max(MARGIN, Math.round((CANVAS_H - sfH) / 2));
+    const sfY = Math.max(MARGIN, Math.round((wrapEl.clientHeight - sfH) / 2));
     st.sf = { x: sfX, y: sfY, w: sfW, h: sfH };
     st.scale = sfW / st.srcW;
     st.view = { zoom: 1.0, panX: 0, panY: 0 };
@@ -137,6 +158,7 @@ function restoreCropFromWidgets(st, widgets, overrideVal) {
         st.outW = parts[4] || 0;
         st.outH = parts[5] || 0;
     }
+    // parts[6] was matchSrcFlag — ignored for backward compat
 }
 
 // ── DOM builder ───────────────────────────────────────────────────────
@@ -161,7 +183,7 @@ function buildUI() {
     const root = mkEl("div", "width:100%;box-sizing:border-box;padding:6px 8px 10px;font-family:system-ui,sans-serif;font-size:12px;color:#ccc;");
 
     // ── Canvas area ──
-    const wrap = mkEl("div", `position:relative;height:${CANVAS_H}px;background:#181818;border:1px solid #3a3a3a;border-radius:6px;overflow:hidden;user-select:none;touch-action:none;cursor:default;`);
+    const wrap = mkEl("div", `position:relative;min-height:${CANVAS_H}px;background:#181818;border:1px solid #3a3a3a;border-radius:6px;overflow:hidden;user-select:none;touch-action:none;cursor:default;`);
 
     // Source frame (holds actual frame image)
     const sfEl = mkEl("div", "position:absolute;background:#222;overflow:hidden;border:1px solid #333;");
@@ -291,7 +313,7 @@ function buildUI() {
         const bl = isFirst ? "1px solid #444" : "none";
         const b = mkEl("button",
             `padding:2px 7px;font-size:10px;border:1px solid #444;border-left:${bl};` +
-            `border-radius:${radius};background:#2a2a2a;color:#bbb;cursor:pointer;`
+            `border-radius:${radius};background:#2a2a2a;color:#bbb;cursor:pointer;white-space:nowrap;`
         );
         b.textContent = label; b.dataset.snap = key;
         b.onmouseenter = () => { b.style.background = "#3a3a3a"; };
@@ -311,20 +333,18 @@ function buildUI() {
 
     // ── Output Size Row ──
     const outSizeRow = mkEl("div", "display:flex;align-items:center;gap:5px;flex-wrap:wrap;");
-    const outLabel = mkEl("span", "font-size:10px;color:#999;"); outLabel.textContent = "out:";
+    const outLabel = mkEl("span", "font-size:10px;color:#999;"); outLabel.textContent = "output resolution:";
     const outWInput = mkEl("input", INPUT_CSS, { type: "number", min: 0, step: GRID, value: 0 });
     outWInput.placeholder = "auto";
     const outXLabel = mkEl("span", "font-size:10px;color:#999;"); outXLabel.textContent = "×";
     const outHInput = mkEl("input", INPUT_CSS, { type: "number", min: 0, step: GRID, value: 0 });
     outHInput.placeholder = "auto";
-    const outAutoBtn = mkBtn("auto");
-    outAutoBtn.title = "Reset output size to auto (same as crop box)";
-    outSizeRow.append(outLabel, outWInput, outXLabel, outHInput, outAutoBtn);
+    outSizeRow.append(outLabel, outWInput, outXLabel, outHInput);
 
     ctrl.append(scrubRow, sizeRow, presetRow, snapRow, outSizeRow);
     root.append(wrap, ctrl);
 
-    return { root, wrap, viewport, zoomIndicator, sfEl, frameImg, srcLabel, noDataMsg, mkT, mkB, mkL, mkR, cropBox, arBtn, snapBtns, scrubber, scrubIdx, wInput, hInput, resetBtn, chipBtns, sizeLabel, padLabelT, padLabelB, padLabelL, padLabelR, edges, outWInput, outHInput, outAutoBtn };
+    return { root, wrap, viewport, zoomIndicator, sfEl, frameImg, srcLabel, noDataMsg, mkT, mkB, mkL, mkR, cropBox, arBtn, snapBtns, scrubber, scrubIdx, wInput, hInput, resetBtn, chipBtns, sizeLabel, padLabelT, padLabelB, padLabelL, padLabelR, edges, outWInput, outHInput };
 }
 
 // ── Render ────────────────────────────────────────────────────────────
@@ -377,9 +397,11 @@ function render(st, dom) {
 
     // Canvas overlays
     const outW = Math.round(s.w), outH = Math.round(s.h);
-    const hasOutScale = st.outW >= GRID && st.outH >= GRID;
+    const effOutW = st.outW;
+    const effOutH = st.outH;
+    const hasOutScale = effOutW >= GRID && effOutH >= GRID && (effOutW !== outW || effOutH !== outH);
     dom.sizeLabel.textContent = hasOutScale
-        ? `${outW}×${outH} → ${st.outW}×${st.outH}`
+        ? `${outW}×${outH} → ${effOutW}×${effOutH}`
         : `${outW} × ${outH}`;
     dom.sizeLabel.style.display = "block";
     dom.sizeLabel.style.left = (cr.x + cr.w / 2) + "px";
@@ -398,15 +420,17 @@ function render(st, dom) {
     if (document.activeElement !== dom.wInput) dom.wInput.value = outW;
     if (document.activeElement !== dom.hInput) dom.hInput.value = outH;
 
-    // Sync output size inputs (0 shown as empty so placeholder "auto" shows)
-    if (document.activeElement !== dom.outWInput) dom.outWInput.value = st.outW || "";
-    if (document.activeElement !== dom.outHInput) dom.outHInput.value = st.outH || "";
+    // Sync output size inputs
+    if (document.activeElement !== dom.outWInput)
+        dom.outWInput.value = st.outW || "";
+    if (document.activeElement !== dom.outHInput)
+        dom.outHInput.value = st.outH || "";
 
     // Sync active preset chip
-    const actualAR = s.w / s.h;
+    const actualAR = st.arLocked ? st.cropAR : s.w / s.h;
     for (const btn of dom.chipBtns) {
         const chipAR = parseFloat(btn.dataset.chipAR);
-        const active = Math.abs(chipAR - actualAR) < 0.001;
+        const active = Math.abs(chipAR - actualAR) < 0.005;
         btn.style.borderColor = active ? "#5090cc" : "#444";
         btn.style.color       = active ? "#aadaff" : "#999";
         btn.style.background  = active ? "#1a3050" : "#222";
@@ -417,7 +441,8 @@ function render(st, dom) {
 /** Zoom out (only) and/or re-center so both the source frame and crop box are fully visible. */
 function fitCropInView(st, dom) {
     const wrapW = dom.wrap.clientWidth;
-    const wrapH = CANVAS_H;
+    const wrapH = dom.wrap.clientHeight;
+    if (wrapW <= 0 || wrapH <= 0) return; // node is offscreen / collapsed
     const pad = MARGIN;
     // Union bounding box of source frame and crop box (canvas coords).
     const bx1 = Math.min(st.sf.x, st.cr.x);
@@ -491,7 +516,7 @@ async function fetchFrame(nodeId, idx, dom) {
 // ── Interaction wiring ────────────────────────────────────────────────
 
 function wireInteractions(st, dom, widgets, node, nodeId) {
-    const { wrap, arBtn, snapBtns, scrubber, scrubIdx, wInput, hInput, resetBtn, chipBtns, outWInput, outHInput, outAutoBtn } = dom;
+    const { wrap, arBtn, snapBtns, scrubber, scrubIdx, wInput, hInput, resetBtn, chipBtns, outWInput, outHInput } = dom;
 
     // AR lock toggle
     arBtn.addEventListener("click", () => setArLocked(st, dom, !st.arLocked));
@@ -507,7 +532,8 @@ function wireInteractions(st, dom, widgets, node, nodeId) {
         s.y = Math.round((cy - s.h / 2) / GRID) * GRID;
         s = clampToValid(quantizeSrc(s), st.srcW, st.srcH);
         st.cr = srcToCr(s, st.sf, st.scale);
-        if (st.arLocked) st.cropAR = s.w / s.h;
+        if (!st.arLocked) st.cropAR = s.w / s.h;
+        syncOutToAR(st);
         fitCropInView(st, dom); render(st, dom); syncWidgets(st, widgets, node);
     });
 
@@ -522,35 +548,39 @@ function wireInteractions(st, dom, widgets, node, nodeId) {
         s.y = Math.round((cy - s.h / 2) / GRID) * GRID;
         s = clampToValid(quantizeSrc(s), st.srcW, st.srcH);
         st.cr = srcToCr(s, st.sf, st.scale);
-        if (st.arLocked) st.cropAR = s.w / s.h;
+        if (!st.arLocked) st.cropAR = s.w / s.h;
+        syncOutToAR(st);
         fitCropInView(st, dom); render(st, dom); syncWidgets(st, widgets, node);
     });
 
     // Reset button
     resetBtn.addEventListener("click", () => {
         initLayout(st, dom.wrap);
+        const d = defaultOut(st); st.outW = d.w; st.outH = d.h;
         fitCropInView(st, dom); render(st, dom); syncWidgets(st, widgets, node);
     });
 
     // Output width input
     outWInput.addEventListener("change", () => {
         const v = parseInt(outWInput.value, 10);
-        st.outW = (isNaN(v) || v < GRID) ? 0 : Math.round(v / GRID) * GRID;
-        if (st.arLocked && st.outW) st.outH = Math.max(GRID, Math.round(st.outW / st.cropAR / GRID) * GRID);
+        if (isNaN(v) || v < GRID) {
+            const d = defaultOut(st); st.outW = d.w; st.outH = d.h;
+        } else {
+            st.outW = Math.round(v / GRID) * GRID;
+            st.outH = Math.max(GRID, Math.round(st.outW / st.cropAR / GRID) * GRID);
+        }
         render(st, dom); syncWidgets(st, widgets, node);
     });
 
     // Output height input
     outHInput.addEventListener("change", () => {
         const v = parseInt(outHInput.value, 10);
-        st.outH = (isNaN(v) || v < GRID) ? 0 : Math.round(v / GRID) * GRID;
-        if (st.arLocked && st.outH) st.outW = Math.max(GRID, Math.round(st.outH * st.cropAR / GRID) * GRID);
-        render(st, dom); syncWidgets(st, widgets, node);
-    });
-
-    // Output auto reset button
-    outAutoBtn.addEventListener("click", () => {
-        st.outW = 0; st.outH = 0;
+        if (isNaN(v) || v < GRID) {
+            const d = defaultOut(st); st.outW = d.w; st.outH = d.h;
+        } else {
+            st.outH = Math.round(v / GRID) * GRID;
+            st.outW = Math.max(GRID, Math.round(st.outH * st.cropAR / GRID) * GRID);
+        }
         render(st, dom); syncWidgets(st, widgets, node);
     });
 
@@ -562,12 +592,16 @@ function wireInteractions(st, dom, widgets, node, nodeId) {
             setArLocked(st, dom, true); st.cropAR = chipAR;
             let s = crToSrc(st.cr, st.sf, st.scale);
             const cx = s.x + s.w / 2, cy = s.y + s.h / 2;
-            // Keep current width, adjust height to match the new ratio
+            // Preserve pixel count: solve w*h=area, w/h=chipAR
+            const area = s.w * s.h;
+            s.w = Math.max(GRID, Math.round(Math.sqrt(area * chipAR) / GRID) * GRID);
             s.h = Math.max(GRID, Math.round(s.w / chipAR / GRID) * GRID);
             s.x = Math.round((cx - s.w / 2) / GRID) * GRID;
             s.y = Math.round((cy - s.h / 2) / GRID) * GRID;
             s = clampToValid(s, st.srcW, st.srcH);
             st.cr = srcToCr(s, st.sf, st.scale);
+            if (st.outW < GRID || st.outH < GRID) { st.outW = rw; st.outH = rh; }
+            else syncOutToAR(st, true);
             fitCropInView(st, dom); render(st, dom); syncWidgets(st, widgets, node);
         });
     }
@@ -602,6 +636,8 @@ function wireInteractions(st, dom, widgets, node, nodeId) {
             }
             s = clampToValid(quantizeSrc(s), st.srcW, st.srcH);
             st.cr = srcToCr(s, st.sf, st.scale);
+            if (!st.arLocked) st.cropAR = s.w / s.h;
+            syncOutToAR(st);
             render(st, dom);
             syncWidgets(st, widgets, node);
         });
@@ -743,6 +779,13 @@ function wireInteractions(st, dom, widgets, node, nodeId) {
                 s = clampToValid(s, st.srcW, st.srcH);
                 st.cr = srcToCr(s, st.sf, st.scale);
             }
+            if (type === "resize") {
+                if (!st.arLocked) {
+                    const s = crToSrc(st.cr, st.sf, st.scale);
+                    st.cropAR = s.w / s.h;
+                }
+                syncOutToAR(st);
+            }
             if (type === "resize" || type === "move") fitCropInView(st, dom);
             render(st, dom);
             syncWidgets(st, widgets, node);
@@ -774,6 +817,9 @@ function wireInteractions(st, dom, widgets, node, nodeId) {
 function setupResizeObserver(st, dom) {
     const ro = new ResizeObserver(() => {
         if (!st.initialized) return;
+        // If the node is collapsed or hidden (H=0), clientHeight is 0, which produces
+        // negative maxH/scale inside initLayout — bail out to preserve valid state.
+        if (dom.wrap.clientHeight <= 0) return;
         // Preserve source-pixel crop before re-layout.
         const prevSrc  = crToSrc(st.cr, st.sf, st.scale);
         const prevZoom = st.view.zoom;
@@ -825,15 +871,34 @@ app.registerExtension({
                 hideOnZoom: false,
             });
 
-            const CTRL_H = 170; // scrubber + size row + presets + snap + out row + gaps
+            const CTRL_H = 185; // scrubber + size row + presets + snap + out row + gaps
+            const NODE_CHROME = 72; // ComfyUI title bar + slot padding overhead
+            const MIN_W = 520;
             domWidget.computeSize = () => [440, CANVAS_H + CTRL_H];
-            node.setSize([Math.max(node.size[0], 460), Math.max(node.size[1], CANVAS_H + CTRL_H + 60)]);
+            node.setSize([Math.max(node.size[0], MIN_W), Math.max(node.size[1], CANVAS_H + CTRL_H + NODE_CHROME)]);
+            let _prevNodeX = node.pos[0];
+            node.onResize = function(size) {
+                if (size[0] < MIN_W) {
+                    if (this.pos[0] !== _prevNodeX) {
+                        // Left-edge drag: compensate pos so the right edge stays pinned.
+                        // Without this, clamping size while pos keeps moving looks like a pan.
+                        this.pos[0] += size[0] - MIN_W;
+                    }
+                    size[0] = MIN_W;
+                }
+                _prevNodeX = this.pos[0];
+                // Grow the canvas wrap to fill extra node height, but never feed back
+                // into computeSize (that would cause an infinite expand loop on load).
+                const h = Math.max(CANVAS_H, size[1] - CTRL_H - NODE_CHROME);
+                dom.wrap.style.height = h + "px";
+                // ResizeObserver on dom.wrap handles re-layout
+            };
 
             // Place canvas widget first; hide crop_state from UI.
             if (node.widgets) {
                 const cs = node.widgets.find(w => w.name === "crop_state");
                 node.widgets = [domWidget, ...node.widgets.filter(w => w !== domWidget && w !== cs)];
-                if (cs) { node.widgets.push(cs); cs.computeSize = () => [0, -4]; }
+                if (cs) { node.widgets.push(cs); cs.computeSize = () => [0, -4]; cs.hidden = true; }
             }
 
             // Latch crop_state at onConfigure time so the rAF callback always has
@@ -862,6 +927,12 @@ app.registerExtension({
                 } else if (hadCrop) {
                     restoreCropFromWidgets(st, widgets);
                 }
+                // Ensure output is set and AR-consistent.
+                if (st.outW < GRID || st.outH < GRID) {
+                    const d = defaultOut(st); st.outW = d.w; st.outH = d.h;
+                } else {
+                    syncOutToAR(st);
+                }
                 dom.frameImg.src = "data:image/jpeg;base64," + data.frame;
                 dom.frameImg.style.display = "block";
                 dom.noDataMsg.style.display = "none";
@@ -881,9 +952,14 @@ app.registerExtension({
                     // Use the value latched at onConfigure time if available.
                     restoreCropFromWidgets(st, widgets, st._latchedCropState);
                     st._latchedCropState = undefined;
+                    if (st.outW < GRID || st.outH < GRID) {
+                        const d = defaultOut(st); st.outW = d.w; st.outH = d.h;
+                    } else {
+                        syncOutToAR(st);
+                    }
                     fitCropInView(st, dom);
-                    render(st, dom);
                     wireInteractions(st, dom, widgets, node, nodeId);
+                    render(st, dom);
                     setupResizeObserver(st, dom);
 
                     // Re-display frames after every successful workflow run.
