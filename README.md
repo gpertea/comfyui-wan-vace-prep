@@ -38,7 +38,7 @@ Prepares a video for outpainting using an interactive canvas widget. Position an
 | width, height | Output video dimensions |
 | length | Frame count |
 
-https://github.com/user-attachments/assets/f0ccf066-332d-45d8-844f-5105f29fc0f0
+https://github.com/user-attachments/assets/999b4019-788b-4d6a-8d73-dd3f402176d2
 
 ---
 
