@@ -15,6 +15,13 @@ git clone https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep
 
 ## Nodes
 
+- [VACE Outpaint](#vace-outpaint)
+- [VACE Join](#vace-join)
+- [VACE Join (Batch)](#vace-join-batch)
+- [VACE Batch Context](#vace-batch-context)
+- [VACE Extend](#vace-extend)
+- [Load Videos From Folder (Simple)](#load-videos-from-folder-simple)
+
 ### VACE Outpaint
 
 Prepares a video for outpainting using an interactive canvas widget. Position and size an output window over your source frames — regions outside the source become the outpaint area. Builds a VACE control video and mask ready for generation.
