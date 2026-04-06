@@ -57,12 +57,9 @@ function syncOutToAR(st, preserveArea = false) {
     }
 }
 
-/** Output resolution: source pixel area shaped to current cropAR. */
-function defaultOut(st) {
-    const area = st.srcW * st.srcH;
-    const w = Math.max(GRID, Math.round(Math.sqrt(area * st.cropAR) / GRID) * GRID);
-    const h = Math.max(GRID, Math.round(w / st.cropAR / GRID) * GRID);
-    return { w, h };
+/** Default output resolution for a new node: fixed 1280×720. */
+function defaultOut(_st) {
+    return { w: 1280, h: 720 };
 }
 
 /** Enforce overlap constraint: crop must intersect source by at least OVERHANG px. */
@@ -87,7 +84,7 @@ function applyCanvasCr(canvasCr, st) {
 
 function createState() {
     return {
-        srcW: 1920, srcH: 1080,
+        srcW: 1280, srcH: 720,
         frameCount: 1,
         scale: 1,
         sf: { x: 0, y: 0, w: 0, h: 0 },
@@ -927,12 +924,8 @@ app.registerExtension({
                 } else if (hadCrop) {
                     restoreCropFromWidgets(st, widgets);
                 }
-                // Ensure output is set and AR-consistent.
-                if (st.outW < GRID || st.outH < GRID) {
-                    const d = defaultOut(st); st.outW = d.w; st.outH = d.h;
-                } else {
-                    syncOutToAR(st);
-                }
+                // Always recompute output resolution to match the new source dimensions.
+                const d = defaultOut(st); st.outW = d.w; st.outH = d.h;
                 dom.frameImg.src = "data:image/jpeg;base64," + data.frame;
                 dom.frameImg.style.display = "block";
                 dom.noDataMsg.style.display = "none";
@@ -941,6 +934,7 @@ app.registerExtension({
                 dom.scrubIdx.textContent = "0 / " + Math.max(0, data.frame_count - 1);
                 fitCropInView(st, dom);
                 render(st, dom);
+                syncWidgets(st, widgets, node);
             };
 
             // Deferred init so the DOM widget has been laid out and has a real width.

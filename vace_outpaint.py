@@ -53,7 +53,6 @@ class VACEOutpaintLayout:
         "The output window may extend beyond the source frame on any side; "
         "overhanging regions become the mask (white = outpaint, black = source content)."
     )
-    EXPERIMENTAL = True
 
     # ------------------------------------------------------------------
     # Main
@@ -172,7 +171,7 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "VACEOutpaintLayout": "🪐 VACE Outpaint Prep (Experimental)",
+    "VACEOutpaintLayout": "🪐 VACE Outpaint Prep",
 }
 
 
