@@ -3,7 +3,7 @@ import { api } from "../../scripts/api.js";
 
 // ── Constants ─────────────────────────────────────────────────────────
 
-const NODE_CLASS  = "VACEOutpaintLayout";
+const NODE_CLASS  = "VACEOutpaint";
 const API_PREFIX  = "/vace_outpaint";
 const CANVAS_H    = 320;   // minimum canvas area height (px)
 const MARGIN      = 22;    // canvas margin around source frame (px)
@@ -838,7 +838,7 @@ function setupResizeObserver(st, dom) {
 // ── Node extension ────────────────────────────────────────────────────
 
 app.registerExtension({
-    name: "VACEOutpaintLayout",
+    name: "VACEOutpaint",
     async beforeRegisterNodeDef(nodeType, nodeData) {
         if (nodeData.name !== NODE_CLASS) return;
 

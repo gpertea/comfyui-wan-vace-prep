@@ -26,7 +26,7 @@ def _tensor_to_jpeg(frame_tensor):
     return buf.getvalue()
 
 
-class VACEOutpaintLayout:
+class VACEOutpaint:
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -168,11 +168,11 @@ class VACEOutpaintLayout:
 
 
 NODE_CLASS_MAPPINGS = {
-    "VACEOutpaintLayout": VACEOutpaintLayout,
+    "VACEOutpaint": VACEOutpaint,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "VACEOutpaintLayout": "🪐 VACE Outpaint Prep",
+    "VACEOutpaint": "🪐 VACE Outpaint",
 }
 
 
