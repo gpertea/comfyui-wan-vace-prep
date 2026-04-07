@@ -12,8 +12,6 @@ const OVERHANG    = 1;     // minimum required outpaint (source px)
 
 // ── Geometry helpers ──────────────────────────────────────────────────
 
-
-
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
 // cr = crop rect in canvas px; sf = source frame rect in canvas px; scale = canvas px / source px
@@ -198,7 +196,7 @@ function buildUI() {
 
     // Mask overlay divs (outside source frame, inside crop box)
     const mkMask = () => mkEl("div", "position:absolute;background:rgba(210,70,70,0.28);pointer-events:none;display:none;");
-    const [mkT, mkB, mkL, mkR] = [mkMask(), mkMask(), mkMask(), mkMask()];
+    const [maskTop, maskBot, maskLeft, maskRight] = [mkMask(), mkMask(), mkMask(), mkMask()];
 
     // Crop/output box
     const cropBox = mkEl("div", "position:absolute;cursor:move;border:2px solid rgba(80,150,255,0.9);background:rgba(50,120,200,0.08);");
@@ -245,7 +243,7 @@ function buildUI() {
 
     // Viewport: receives CSS transform for zoom/pan; contains all positioned elements.
     const viewport = mkEl("div", "position:absolute;inset:0;transform-origin:0 0;");
-    viewport.append(sfEl, mkT, mkB, mkL, mkR, cropBox, sizeLabel, padLabelT, padLabelB, padLabelL, padLabelR);
+    viewport.append(sfEl, maskTop, maskBot, maskLeft, maskRight, cropBox, sizeLabel, padLabelT, padLabelB, padLabelL, padLabelR);
     wrap.appendChild(viewport);
 
     // Zoom indicator (bottom-left overlay, doubles as reset button).
@@ -260,8 +258,8 @@ function buildUI() {
     // ── Controls ──
     const ctrl = mkEl("div", "display:flex;flex-direction:column;gap:5px;margin-top:7px;");
 
-    // ── Output Size Row ──
-    const sizeRow = mkEl("div", "display:flex;align-items:center;gap:5px;flex-wrap:wrap;");
+    // ── Crop Size Row ──
+    const cropSizeRow = mkEl("div", "display:flex;align-items:center;gap:5px;flex-wrap:wrap;");
     const INPUT_CSS =
         "width:58px;padding:2px 5px;font-size:11px;font-family:monospace;" +
         "background:#1e1e1e;color:#ccc;border:1px solid #444;border-radius:4px;text-align:right;";
@@ -276,7 +274,7 @@ function buildUI() {
     arBtn.textContent = "🔒"; arBtn._active = true; arBtn.title = "Lock aspect ratio";
     const resetBtn = mkBtn("reset");
     resetBtn.title = "Reset to default 1280×720 centered crop";
-    sizeRow.append(wLabel, wInput, hLabel, hInput, arBtn, resetBtn);
+    cropSizeRow.append(wLabel, wInput, hLabel, hInput, arBtn, resetBtn);
 
     // ── Preset Chips Row ──
     const CHIP_PRESETS = [
@@ -321,12 +319,12 @@ function buildUI() {
 
     // Frame scrubber
     const scrubRow = mkEl("div", "display:flex;align-items:center;gap:7px;");
-    const scrubLabel2 = mkEl("span", "font-size:10px;color:#999;");
-    scrubLabel2.textContent = "frame:";
+    const frameLabel = mkEl("span", "font-size:10px;color:#999;");
+    frameLabel.textContent = "frame:";
     const scrubber = mkEl("input", "flex:1;cursor:pointer;", { type: "range", min: 0, max: 0, value: 0 });
     const scrubIdx = mkEl("span", "font-size:10px;font-family:monospace;color:#999;min-width:50px;text-align:right;");
     scrubIdx.textContent = "0 / 0";
-    scrubRow.append(scrubLabel2, scrubber, scrubIdx);
+    scrubRow.append(frameLabel, scrubber, scrubIdx);
 
     // ── Output Size Row ──
     const outSizeRow = mkEl("div", "display:flex;align-items:center;gap:5px;flex-wrap:wrap;");
@@ -338,10 +336,10 @@ function buildUI() {
     outHInput.placeholder = "auto";
     outSizeRow.append(outLabel, outWInput, outXLabel, outHInput);
 
-    ctrl.append(scrubRow, sizeRow, presetRow, snapRow, outSizeRow);
+    ctrl.append(scrubRow, cropSizeRow, presetRow, snapRow, outSizeRow);
     root.append(wrap, ctrl);
 
-    return { root, wrap, viewport, zoomIndicator, sfEl, frameImg, srcLabel, noDataMsg, mkT, mkB, mkL, mkR, cropBox, arBtn, snapBtns, scrubber, scrubIdx, wInput, hInput, resetBtn, chipBtns, sizeLabel, padLabelT, padLabelB, padLabelL, padLabelR, edges, outWInput, outHInput };
+    return { root, wrap, viewport, zoomIndicator, sfEl, frameImg, srcLabel, noDataMsg, maskTop, maskBot, maskLeft, maskRight, cropBox, arBtn, snapBtns, scrubber, scrubIdx, wInput, hInput, resetBtn, chipBtns, sizeLabel, padLabelT, padLabelB, padLabelL, padLabelR, edges, outWInput, outHInput };
 }
 
 // ── Render ────────────────────────────────────────────────────────────
@@ -381,10 +379,10 @@ function render(st, dom) {
             el.style.display = "none";
         }
     };
-    setMask(dom.mkT, cr.x, cr.y, cr.w, Math.max(0, iy1 - cr.y));
-    setMask(dom.mkB, cr.x, iy2,  cr.w, Math.max(0, cr.y + cr.h - iy2));
-    setMask(dom.mkL, cr.x, iy1,  Math.max(0, ix1 - cr.x), iy2 - iy1);
-    setMask(dom.mkR, ix2,  iy1,  Math.max(0, cr.x + cr.w - ix2), iy2 - iy1);
+    setMask(dom.maskTop,   cr.x, cr.y, cr.w, Math.max(0, iy1 - cr.y));
+    setMask(dom.maskBot,   cr.x, iy2,  cr.w, Math.max(0, cr.y + cr.h - iy2));
+    setMask(dom.maskLeft,  cr.x, iy1,  Math.max(0, ix1 - cr.x), iy2 - iy1);
+    setMask(dom.maskRight, ix2,  iy1,  Math.max(0, cr.x + cr.w - ix2), iy2 - iy1);
 
     // Pad amounts
     const padT = Math.max(0, -s.y);
@@ -512,43 +510,43 @@ async function fetchFrame(nodeId, idx, dom) {
 
 // ── Interaction wiring ────────────────────────────────────────────────
 
+function applyCropDim(st, dom, widgets, node, axis, rawVal) {
+    const isW = axis === "w";
+    const r = Math.max(GRID, Math.round(parseInt(rawVal, 10) / GRID) * GRID) || GRID;
+    let s = crToSrc(st.cr, st.sf, st.scale);
+    const cx = s.x + s.w / 2, cy = s.y + s.h / 2;
+    if (isW) { s.w = r; if (st.arLocked) s.h = Math.max(GRID, Math.round(r / st.cropAR / GRID) * GRID); }
+    else     { s.h = r; if (st.arLocked) s.w = Math.max(GRID, Math.round(r * st.cropAR / GRID) * GRID); }
+    s.x = Math.round((cx - s.w / 2) / GRID) * GRID;
+    s.y = Math.round((cy - s.h / 2) / GRID) * GRID;
+    s = clampToValid(quantizeSrc(s), st.srcW, st.srcH);
+    st.cr = srcToCr(s, st.sf, st.scale);
+    if (!st.arLocked) st.cropAR = s.w / s.h;
+    syncOutToAR(st);
+    fitCropInView(st, dom); render(st, dom); syncWidgets(st, widgets, node);
+}
+
+function applyOutDim(st, dom, widgets, node, axis, rawVal) {
+    const v = parseInt(rawVal, 10);
+    if (isNaN(v) || v < GRID) {
+        const d = defaultOut(st); st.outW = d.w; st.outH = d.h;
+    } else {
+        const r = Math.round(v / GRID) * GRID;
+        if (axis === "w") { st.outW = r; st.outH = Math.max(GRID, Math.round(r / st.cropAR / GRID) * GRID); }
+        else              { st.outH = r; st.outW = Math.max(GRID, Math.round(r * st.cropAR / GRID) * GRID); }
+    }
+    render(st, dom); syncWidgets(st, widgets, node);
+}
+
 function wireInteractions(st, dom, widgets, node, nodeId) {
     const { wrap, arBtn, snapBtns, scrubber, scrubIdx, wInput, hInput, resetBtn, chipBtns, outWInput, outHInput } = dom;
 
     // AR lock toggle
     arBtn.addEventListener("click", () => setArLocked(st, dom, !st.arLocked));
 
-    // W input
-    wInput.addEventListener("change", () => {
-        let rw = Math.max(GRID, Math.round(parseInt(wInput.value, 10) / GRID) * GRID) || GRID;
-        let s = crToSrc(st.cr, st.sf, st.scale);
-        const cx = s.x + s.w / 2, cy = s.y + s.h / 2;
-        s.w = rw;
-        if (st.arLocked) s.h = Math.max(GRID, Math.round(rw / st.cropAR / GRID) * GRID);
-        s.x = Math.round((cx - s.w / 2) / GRID) * GRID;
-        s.y = Math.round((cy - s.h / 2) / GRID) * GRID;
-        s = clampToValid(quantizeSrc(s), st.srcW, st.srcH);
-        st.cr = srcToCr(s, st.sf, st.scale);
-        if (!st.arLocked) st.cropAR = s.w / s.h;
-        syncOutToAR(st);
-        fitCropInView(st, dom); render(st, dom); syncWidgets(st, widgets, node);
-    });
-
-    // H input
-    hInput.addEventListener("change", () => {
-        let rh = Math.max(GRID, Math.round(parseInt(hInput.value, 10) / GRID) * GRID) || GRID;
-        let s = crToSrc(st.cr, st.sf, st.scale);
-        const cx = s.x + s.w / 2, cy = s.y + s.h / 2;
-        s.h = rh;
-        if (st.arLocked) s.w = Math.max(GRID, Math.round(rh * st.cropAR / GRID) * GRID);
-        s.x = Math.round((cx - s.w / 2) / GRID) * GRID;
-        s.y = Math.round((cy - s.h / 2) / GRID) * GRID;
-        s = clampToValid(quantizeSrc(s), st.srcW, st.srcH);
-        st.cr = srcToCr(s, st.sf, st.scale);
-        if (!st.arLocked) st.cropAR = s.w / s.h;
-        syncOutToAR(st);
-        fitCropInView(st, dom); render(st, dom); syncWidgets(st, widgets, node);
-    });
+    // W / H inputs
+    wInput.addEventListener("change", () => applyCropDim(st, dom, widgets, node, "w", wInput.value));
+    hInput.addEventListener("change", () => applyCropDim(st, dom, widgets, node, "h", hInput.value));
 
     // Reset button
     resetBtn.addEventListener("click", () => {
@@ -557,29 +555,9 @@ function wireInteractions(st, dom, widgets, node, nodeId) {
         fitCropInView(st, dom); render(st, dom); syncWidgets(st, widgets, node);
     });
 
-    // Output width input
-    outWInput.addEventListener("change", () => {
-        const v = parseInt(outWInput.value, 10);
-        if (isNaN(v) || v < GRID) {
-            const d = defaultOut(st); st.outW = d.w; st.outH = d.h;
-        } else {
-            st.outW = Math.round(v / GRID) * GRID;
-            st.outH = Math.max(GRID, Math.round(st.outW / st.cropAR / GRID) * GRID);
-        }
-        render(st, dom); syncWidgets(st, widgets, node);
-    });
-
-    // Output height input
-    outHInput.addEventListener("change", () => {
-        const v = parseInt(outHInput.value, 10);
-        if (isNaN(v) || v < GRID) {
-            const d = defaultOut(st); st.outW = d.w; st.outH = d.h;
-        } else {
-            st.outH = Math.round(v / GRID) * GRID;
-            st.outW = Math.max(GRID, Math.round(st.outH * st.cropAR / GRID) * GRID);
-        }
-        render(st, dom); syncWidgets(st, widgets, node);
-    });
+    // Output W / H inputs
+    outWInput.addEventListener("change", () => applyOutDim(st, dom, widgets, node, "w", outWInput.value));
+    outHInput.addEventListener("change", () => applyOutDim(st, dom, widgets, node, "h", outHInput.value));
 
     // Preset chips
     for (const btn of chipBtns) {
@@ -674,7 +652,7 @@ function wireInteractions(st, dom, widgets, node, nodeId) {
 
     // ── Pointer drag/resize ──
     let drag = null;
-    const MB = GRID; // minimum world-px crop box size
+    const MIN_DRAG_PX = GRID;
 
     wrap.addEventListener("pointerdown", e => {
         // Middle-click → pan
@@ -711,7 +689,7 @@ function wireInteractions(st, dom, widgets, node, nodeId) {
         const wc   = toWorld(e, wrap, st.view);
         const dx   = wc.x - drag.sx;
         const dy   = wc.y - drag.sy;
-        const minPx = MB * st.scale;
+        const minPx = MIN_DRAG_PX * st.scale;
 
         if (drag.type === "move") {
             applyCanvasCr({ ...drag.sb, x: drag.sb.x + dx, y: drag.sb.y + dy }, st);

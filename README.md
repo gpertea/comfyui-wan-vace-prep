@@ -24,7 +24,7 @@ git clone https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep
 
 ### VACE Outpaint
 
-Prepares a video for outpainting using an interactive canvas widget. Position and size an output window over your source frames — regions outside the source become the outpaint area. Builds a VACE control video and mask ready for generation.
+Prepares a video for outpainting using an interactive canvas widget. Position and size an output window over your source frames. Regions outside the source become the outpaint area. Builds a VACE control video and mask ready for generation.
 
 ![VACE Outpaint Node](assets/vace-outpaint.png)
 
@@ -93,8 +93,8 @@ Batch-aware version of VACE Join for processing multiple video pairs. Handles fi
 |-|-|-|
 | video_1 | | First video in the pair (IMAGE type) |
 | video_2 | | Second video in the pair (IMAGE type) |
-| is_first | false | Set true for first iteration (index=0) — includes full beginning of video_1 in start_images |
-| is_last | false | Set true for last iteration — includes full ending of video_2 in end_images |
+| is_first | false | Set true for first iteration (index=0). Includes full beginning of video_1 in start_images |
+| is_last | false | Set true for last iteration. Includes full ending of video_2 in end_images |
 | context_frames | 8 | Reference frames from each video edge for VACE interpolation. Must be a multiple of 4. |
 | replace_frames | 8 | Frames at each transition edge to discard and regenerate. Must be a multiple of 4. |
 | new_frames | 0 | New frames to generate between clips. Must be 0 or a multiple of 4. |
@@ -126,10 +126,10 @@ Establishes iteration context for batch video processing workflows. Manages file
 |-|-|-|
 | input_list | | List of video filenames to process (STRING, force input) |
 | input_dir | | Directory containing input videos |
-| project_name | . | Project name — workflow files created under ComfyUI/output/project_name. Use period (.) for no project name. |
+| project_name | . | Workflow files are created under ComfyUI/output/project_name. Use period (.) for no project name. |
 | index | 0 | Current iteration index (0-based). Valid range: 0 to (number of videos - 2) normally, or 0 to (number of videos - 1) when `make_loop=true` |
 | debug | false | Log iteration details to the console |
-| make_loop | false | Enable loop mode — adds one extra iteration that pairs the last video with the first, creating a seamless loop. When true, `is_first` and `is_last` are always false. |
+| make_loop | false | Enable loop mode. Adds one extra iteration that pairs the last video with the first, creating a seamless loop. When true, `is_first` and `is_last` are always false. |
 
 **Outputs:**
 
@@ -141,7 +141,7 @@ Establishes iteration context for batch video processing workflows. Manages file
 | video_2_filename | Full path to second video in current pair |
 | is_first | True if this is the first iteration (index=0). Always false when `make_loop=true`. |
 | is_last | True if this is the last iteration. Always false when `make_loop=true`. |
-| assemble_video | True on the final iteration — used to gate the assembly step. Equivalent to `is_last` when `make_loop=false`; fires on the loop-closing iteration when `make_loop=true`. |
+| assemble_video | True on the final iteration. Used to gate the assembly step. Equivalent to `is_last` when `make_loop=false`; fires on the loop-closing iteration when `make_loop=true`. |
 
 ---
 
@@ -175,13 +175,13 @@ Extends a video from an arbitrary frame position. Context frames preceding the e
 
 Loads all videos from a folder, concatenated into a single image batch.
 
-Optionally connect a **VideoHelperSuite** *Meta Batch Manager* node to process large collections in RAM-safe chunks. If you are joining a large number of video files and running out of system memory as they concatenate, this is the solution. From the VHS Meta Batch Manager node documentation:
+Optionally connect a **[VideoHelperSuite](https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite)** *Meta Batch Manager* node to process large collections in RAM-safe chunks. If you are joining a large number of video files and running out of system memory as they concatenate, this is the solution. From the VHS Meta Batch Manager node documentation:
 
 > The Meta Batch Manager allows for extremely long input videos to be processed when all other methods for fitting the content in RAM fail. It does not affect VRAM usage. It must be connected to at least one Input (a Load Video or Load Images) AND at least one Video Combine.
 
 See the VHS Meta Batch Manager node documentation for more information.
 
-*Meta Batch Manager* rule of thumb: set `frames_per_batch` to roughly 10× your available RAM (not VRAM) in GB — so 32 GB → 320 frames, 64 GB → 640 frames, 128 GB → 1280 frames.
+*Meta Batch Manager* rule of thumb: set `frames_per_batch` to roughly 10× your available RAM (not VRAM) in GB. So 32 GB -> 320 frames, 64 GB -> 640 frames, 128 GB -> 1280 frames.
 
 - **Formats:** webm, mp4, mkv, gif, mov
 - All videos must have identical resolution
@@ -209,10 +209,10 @@ See the VHS Meta Batch Manager node documentation for more information.
 
 **4n+1 frame rule.** The Wan model generates 4n+1 frames at a time. If you request a different count, it silently rounds down to the nearest 4n+1. For this reason, parameters are restricted to multiples of 4 or 4n+1, and when necessary the nodes add +1 to the generated frame count.
 
-**Class names vs. display names.** Some internal class names (e.g., `WanVACEPrep`) don't match the current display names (e.g., "VACE Join"). This is intentional — renaming classes would break existing workflows that reference them. Once ComfyUI's node renaming API is stable, a refactoring pass will align them.
+**Class names vs. display names.** Some internal class names (e.g., `WanVACEPrep`) don't match the current display names (e.g., "VACE Join"). This is intentional: renaming classes would break existing workflows that reference them. Once ComfyUI's node renaming API is stable, a refactoring pass will align them.
 
 **Nodes 2.0 renderer.** These nodes have not been tested under ComfyUI's Nodes 2.0 renderer and may or may not work correctly with it. Testing and support will be added sometime after ComfyUI publishes documentation for node developers to work from.
 
 ## License
 
-MIT License — feel free to use, modify, and distribute.
+MIT License. Feel free to use, modify, and distribute.
