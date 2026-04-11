@@ -113,27 +113,30 @@ class VACEOutpaint:
         # For each output pixel (px, py), the corresponding source pixel is
         #   (crop_x + px, crop_y + py).
         # We copy the intersection and leave the rest as black / masked.
+
+        # Top-left corner of the copied region in both spaces (same for all frames).
+        dst_x = max(0, -crop_x)
+        dst_y = max(0, -crop_y)
+        src_x = max(0, crop_x)
+        src_y = max(0, crop_y)
+        copy_w = min(src_w - src_x, out_w - dst_x)
+        copy_h = min(src_h - src_y, out_h - dst_y)
+
+        # Build the mask once (same geometry for all frames).
+        mask = np.ones((out_h, out_w), dtype=np.float32)  # 1 = outpaint
+        if copy_w > 0 and copy_h > 0:
+            mask[dst_y:dst_y + copy_h, dst_x:dst_x + copy_w] = 0.0
+
         control_frames = []
         mask_frames = []
 
         for i in range(n):
             src_np = images[i].cpu().numpy()       # (src_h, src_w, 3) float32
             out    = np.full((out_h, out_w, 3), 0.5, dtype=np.float32)
-            mask   = np.ones((out_h, out_w),    dtype=np.float32)  # 1 = outpaint
-
-            # Top-left corner of the copied region in both spaces.
-            dst_x = max(0, -crop_x)
-            dst_y = max(0, -crop_y)
-            src_x = max(0, crop_x)
-            src_y = max(0, crop_y)
-
-            copy_w = min(src_w - src_x, out_w - dst_x)
-            copy_h = min(src_h - src_y, out_h - dst_y)
 
             if copy_w > 0 and copy_h > 0:
                 out[dst_y:dst_y + copy_h, dst_x:dst_x + copy_w] = \
                     src_np[src_y:src_y + copy_h, src_x:src_x + copy_w]
-                mask[dst_y:dst_y + copy_h, dst_x:dst_x + copy_w] = 0.0
 
             control_frames.append(out)
             mask_frames.append(mask)
