@@ -153,7 +153,9 @@ function restoreCropFromWidgets(st, widgets, overrideVal) {
         st.outW = parts[4] || 0;
         st.outH = parts[5] || 0;
     }
-    // parts[6] was matchSrcFlag — ignored for backward compat
+    if (parts.length >= 7 && !isNaN(parts[6])) {
+        st.arLocked = parts[6] !== 0;
+    }
 }
 
 // ── DOM builder ───────────────────────────────────────────────────────
@@ -468,7 +470,7 @@ function fitCropInView(st, dom) {
 function syncWidgets(st, widgets, node) {
     const s = quantizeSrc(crToSrc(st.cr, st.sf, st.scale));
     if (widgets.cropState)
-        widgets.cropState.value = `${s.x},${s.y},${s.w},${s.h},${st.outW},${st.outH}`;
+        widgets.cropState.value = `${s.x},${s.y},${s.w},${s.h},${st.outW},${st.outH},${st.arLocked ? 1 : 0}`;
     if (node.graph) node.graph.setDirtyCanvas(true, true);
 }
 
@@ -803,6 +805,7 @@ function setupResizeObserver(st, dom) {
         // Restore crop in new coordinate space.
         const s = clampToValid(quantizeSrc(prevSrc), st.srcW, st.srcH);
         st.cr = srcToCr(s, st.sf, st.scale);
+        st.cropAR = s.w / s.h;
         // Keep the view if it was non-default (user has zoomed/panned).
         if (prevZoom !== 1.0 || prevPan.panX !== 0 || prevPan.panY !== 0) {
             st.view = prevPan;
@@ -902,8 +905,10 @@ app.registerExtension({
                 } else if (hadCrop) {
                     restoreCropFromWidgets(st, widgets);
                 }
-                // Always recompute output resolution to match the new source dimensions.
-                const d = defaultOut(st); st.outW = d.w; st.outH = d.h;
+                // Only set default output resolution if the user hasn't configured one.
+                if (st.outW < GRID || st.outH < GRID) {
+                    const d = defaultOut(st); st.outW = d.w; st.outH = d.h;
+                }
                 dom.frameImg.src = "data:image/jpeg;base64," + data.frame;
                 dom.frameImg.style.display = "block";
                 dom.noDataMsg.style.display = "none";
@@ -924,6 +929,7 @@ app.registerExtension({
                     // Use the value latched at onConfigure time if available.
                     restoreCropFromWidgets(st, widgets, st._latchedCropState);
                     st._latchedCropState = undefined;
+                    setArLocked(st, dom, st.arLocked);
                     if (st.outW < GRID || st.outH < GRID) {
                         const d = defaultOut(st); st.outW = d.w; st.outH = d.h;
                     } else {
