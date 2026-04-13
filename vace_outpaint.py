@@ -170,13 +170,6 @@ class VACEOutpaint:
         return (control_video, control_mask, eff_w, eff_h, n)
 
 
-NODE_CLASS_MAPPINGS = {
-    "VACEOutpaint": VACEOutpaint,
-}
-
-NODE_DISPLAY_NAME_MAPPINGS = {
-    "VACEOutpaint": "🪐 VACE Outpaint",
-}
 
 
 # ── API routes ──────────────────────────────────────────────────────────

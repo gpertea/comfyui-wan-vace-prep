@@ -237,13 +237,3 @@ class WanVACEPrepBatch(WanVACEPrepBase):
             print(f"[VACE Join Batch] === End ===")
 
         return (control_video, mask, width, height, length, start_images, end_images, context_frames, replace_frames, new_frames)
-
-NODE_CLASS_MAPPINGS = {
-    "WanVACEPrep": WanVACEPrep,
-    "WanVACEPrepBatch": WanVACEPrepBatch
-}
-
-NODE_DISPLAY_NAME_MAPPINGS = {
-    "WanVACEPrep": "🪐 VACE Join",
-    "WanVACEPrepBatch": "🪐 VACE Join (Batch)"
-}

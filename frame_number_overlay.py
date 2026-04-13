@@ -75,11 +75,3 @@ class FrameNumberOverlay:
 
         return (torch.stack(result),)
 
-
-NODE_CLASS_MAPPINGS = {
-    "FrameNumberOverlay": FrameNumberOverlay,
-}
-
-NODE_DISPLAY_NAME_MAPPINGS = {
-    "FrameNumberOverlay": "🪐 Frame Number Overlay",
-}

@@ -114,11 +114,3 @@ class WanVACEBatchContext:
 
         return (work_dir, workfile_prefix, video_1_filename, video_2_filename, is_first, is_last, assemble_video)
 
-
-NODE_CLASS_MAPPINGS = {
-    "WanVACEBatchContext": WanVACEBatchContext
-}
-
-NODE_DISPLAY_NAME_MAPPINGS = {
-    "WanVACEBatchContext": "🪐 VACE Batch Context"
-}

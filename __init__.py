@@ -2,14 +2,32 @@
 Wan VACE Prep - Custom nodes for preparing videos for Wan VACE generation
 """
 
-from .vace_join import NODE_CLASS_MAPPINGS as JOIN_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS as JOIN_DISPLAY
-from .vace_extend import NODE_CLASS_MAPPINGS as EXTEND_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS as EXTEND_DISPLAY
-from .load_videos_from_folder import NODE_CLASS_MAPPINGS as LOAD_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS as LOAD_DISPLAY
-from .vace_batch_context import NODE_CLASS_MAPPINGS as CONTEXT_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS as CONTEXT_DISPLAY
-from .frame_number_overlay import NODE_CLASS_MAPPINGS as OVERLAY_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS as OVERLAY_DISPLAY
-from .vace_outpaint import NODE_CLASS_MAPPINGS as OUTPAINT_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS as OUTPAINT_DISPLAY
-NODE_CLASS_MAPPINGS = {**JOIN_MAPPINGS, **EXTEND_MAPPINGS, **LOAD_MAPPINGS, **CONTEXT_MAPPINGS, **OVERLAY_MAPPINGS, **OUTPAINT_MAPPINGS}
-NODE_DISPLAY_NAME_MAPPINGS = {**JOIN_DISPLAY, **EXTEND_DISPLAY, **LOAD_DISPLAY, **CONTEXT_DISPLAY, **OVERLAY_DISPLAY, **OUTPAINT_DISPLAY}
+from .vace_join import WanVACEPrep, WanVACEPrepBatch
+from .vace_extend import WanVACEExtend
+from .load_videos_from_folder import LoadVideosFromFolderSimple
+from .vace_batch_context import WanVACEBatchContext
+from .frame_number_overlay import FrameNumberOverlay
+from .vace_outpaint import VACEOutpaint
+
+NODE_CLASS_MAPPINGS = {
+    "WanVACEPrep": WanVACEPrep,
+    "WanVACEPrepBatch": WanVACEPrepBatch,
+    "WanVACEExtend": WanVACEExtend,
+    "LoadVideosFromFolderSimple": LoadVideosFromFolderSimple,
+    "WanVACEBatchContext": WanVACEBatchContext,
+    "FrameNumberOverlay": FrameNumberOverlay,
+    "VACEOutpaint": VACEOutpaint,
+}
+
+NODE_DISPLAY_NAME_MAPPINGS = {
+    "WanVACEPrep": "🪐 VACE Join",
+    "WanVACEPrepBatch": "🪐 VACE Join (Batch)",
+    "WanVACEExtend": "🪐 VACE Extend",
+    "LoadVideosFromFolderSimple": "🪐 Load Videos From Folder (Simple)",
+    "WanVACEBatchContext": "🪐 VACE Batch Context",
+    "FrameNumberOverlay": "🪐 Frame Number Overlay",
+    "VACEOutpaint": "🪐 VACE Outpaint",
+}
 
 WEB_DIRECTORY = "./web"
 

@@ -236,11 +236,3 @@ class LoadVideosFromFolderSimple:
 
             if debug:
                 print(f"[Load Videos] Batched: Finished {os.path.basename(video_path)}: {frame_count} frames")
-
-NODE_CLASS_MAPPINGS = {
-    "LoadVideosFromFolderSimple": LoadVideosFromFolderSimple
-}
-
-NODE_DISPLAY_NAME_MAPPINGS = {
-    "LoadVideosFromFolderSimple": "🪐 Load Videos From Folder (Simple)"
-}

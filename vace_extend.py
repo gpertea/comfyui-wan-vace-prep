@@ -100,11 +100,3 @@ class WanVACEExtend:
         length = int(control_video.shape[0])
 
         return (control_video, mask, width, height, length, start_images, context_frames, new_frames)
-
-NODE_CLASS_MAPPINGS = {
-    "WanVACEExtend": WanVACEExtend
-}
-
-NODE_DISPLAY_NAME_MAPPINGS = {
-    "WanVACEExtend": "🪐 VACE Extend"
-}
