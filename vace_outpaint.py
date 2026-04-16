@@ -17,6 +17,20 @@ _DEFAULT_PAD_FACTOR = 0.3  # default upward padding as a fraction of source heig
 _frame_cache = {}
 
 
+def _parse_color(s):
+    s = s.strip().lstrip("#")
+    if len(s) == 6 and all(c in "0123456789abcdefABCDEF" for c in s):
+        r, g, b = int(s[0:2], 16), int(s[2:4], 16), int(s[4:6], 16)
+        return (r / 255.0, g / 255.0, b / 255.0)
+    parts = [p.strip() for p in s.split(",")]
+    if len(parts) != 3:
+        raise ValueError(f"[VACE Outpaint] custom_color must be hex or 3 comma-separated values, got: {s!r}")
+    vals = [float(p) for p in parts]
+    if any(v > 1.0 for v in vals):
+        vals = [v / 255.0 for v in vals]
+    return tuple(max(0.0, min(1.0, v)) for v in vals)
+
+
 def _tensor_to_jpeg(frame_tensor):
     """Convert a (H, W, 3) float32 0-1 tensor to JPEG bytes."""
     arr = (frame_tensor.cpu().numpy() * 255).clip(0, 255).astype(np.uint8)
@@ -37,6 +51,14 @@ class VACEOutpaint:
                 "crop_state": ("STRING", {
                     "default": "",
                     "tooltip": "Canvas-managed crop state: 'x,y,w,h[,ow,oh]' in source pixels. Set by the interactive widget.",
+                }),
+                "mask_color": ("STRING", {
+                    "default": "wan",
+                    "tooltip": "Fill color preset for the outpainted region. Managed by the canvas widget.",
+                }),
+                "custom_color": ("STRING", {
+                    "default": "128,128,128",
+                    "tooltip": "Custom fill color when mask_color is 'custom'. Managed by the canvas widget.",
                 }),
             },
             "hidden": {
@@ -60,7 +82,7 @@ class VACEOutpaint:
     # Main
     # ------------------------------------------------------------------
 
-    def outpaint_prep(self, images, crop_state, unique_id):
+    def outpaint_prep(self, images, crop_state, mask_color, custom_color, unique_id):
         n, src_h, src_w, _ = images.shape
 
         if src_w < _MIN_DIM or src_h < _MIN_DIM:
@@ -108,7 +130,7 @@ class VACEOutpaint:
         #
         # The output window top-left is (crop_x, crop_y) in source pixel space.
         # A negative crop_x / crop_y means the window extends to the left / top
-        # of the source — those regions are padded (gray, 0.5) and masked (white).
+        # of the source — those regions are padded (fill_rgb) and masked (white).
         #
         # For each output pixel (px, py), the corresponding source pixel is
         #   (crop_x + px, crop_y + py).
@@ -127,12 +149,15 @@ class VACEOutpaint:
         if copy_w > 0 and copy_h > 0:
             mask[dst_y:dst_y + copy_h, dst_x:dst_x + copy_w] = 0.0
 
+        _PRESETS = {"wan": (0.5, 0.5, 0.5), "ltx": (0.0, 0.0, 0.0)}
+        fill_rgb = _PRESETS[mask_color] if mask_color in _PRESETS else _parse_color(custom_color)
+
         control_frames = []
         mask_frames = []
 
         for i in range(n):
             src_np = images[i].cpu().numpy()       # (src_h, src_w, 3) float32
-            out    = np.full((out_h, out_w, 3), 0.5, dtype=np.float32)
+            out    = np.full((out_h, out_w, 3), fill_rgb, dtype=np.float32)
 
             if copy_w > 0 and copy_h > 0:
                 out[dst_y:dst_y + copy_h, dst_x:dst_x + copy_w] = \

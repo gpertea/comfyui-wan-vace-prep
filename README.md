@@ -1,6 +1,6 @@
 # Wan VACE Prep
 
-This is a small collection of ComfyUI nodes designed to help make common Wan VACE tasks less complicated.
+A small collection of ComfyUI nodes for common video tasks. Primarily designed for Wan VACE, with LTX-2 outpainting support.
 
 ## Quick Start
 
@@ -15,18 +15,20 @@ git clone https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep
 
 ## Nodes
 
-- [VACE Outpaint](#vace-outpaint)
+- [Video Outpaint](#video-outpaint) *(formerly VACE Outpaint*)
 - [VACE Join](#vace-join)
 - [VACE Join (Batch)](#vace-join-batch)
 - [VACE Batch Context](#vace-batch-context)
 - [VACE Extend](#vace-extend)
 - [Load Videos From Folder (Simple)](#load-videos-from-folder-simple)
 
-### VACE Outpaint
+### Video Outpaint 
 
-Prepares a video for outpainting using an interactive canvas widget. Position and size an output window over your source frames. Regions outside the source become the outpaint area. Builds a VACE control video and mask ready for generation.
+Prepares a video for outpainting using an interactive canvas widget. Position and size an output window over your source frames. Regions outside the source become the outpaint area. Primarily designed for VACE, with support for LTX-2 outpainting via the pad color preset.
 
-![VACE Outpaint Node](assets/vace-outpaint.png)
+Renamed from *VACE Outpaint*.
+
+![Video Outpaint Node](assets/vace-outpaint.png)
 
 > **Nodes 2.0 incompatibility:** This node is known to malfunction under ComfyUI's Nodes 2.0 renderer. No fix is planned until ComfyUI publishes node development documentation.
 
@@ -36,11 +38,18 @@ Prepares a video for outpainting using an interactive canvas widget. Position an
 |-|-|-|
 | images | | Source video frames |
 
+**Canvas controls:**
+
+| Control | Description |
+|-|-|
+| output resolution | Width and height of the generated output. Leave at 0 to match the crop box size. |
+| pad color | Fill color for the outpainted region of the control video. "wan" = gray (0.5), "ltx" = black (0.0), "custom" = enter a hex code (#RRGGBB), 0-255 integers (R,G,B), or 0.0-1.0 floats (R,G,B). |
+
 **Outputs:**
 
 | Output | Description |
 |-|-|
-| control_video | VACE control video input. Source content placed within the output window; overhanging regions filled with gray (0.5). |
+| control_video | VACE control video input. Source content placed within the output window; overhanging regions filled with the selected pad color. |
 | control_mask | VACE control mask input. White (1) where outpainting should occur, black (0) over source content. |
 | width, height | Output video dimensions |
 | length | Frame count |

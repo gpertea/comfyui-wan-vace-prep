@@ -92,6 +92,8 @@ function createState() {
         initialized: false,
         view: { zoom: 1.0, panX: 0, panY: 0 },
         outW: 0, outH: 0,
+        maskColor: "wan",
+        customColor: "128,128,128",
     };
 }
 
@@ -328,7 +330,7 @@ function buildUI() {
     scrubIdx.textContent = "0 / 0";
     scrubRow.append(frameLabel, scrubber, scrubIdx);
 
-    // ── Output Size Row ──
+    // ── Output Size + Mask Color Row (shared) ──
     const outSizeRow = mkEl("div", "display:flex;align-items:center;gap:5px;flex-wrap:wrap;");
     const outLabel = mkEl("span", "font-size:10px;color:#999;"); outLabel.textContent = "output resolution:";
     const outWInput = mkEl("input", INPUT_CSS, { type: "number", min: 0, step: GRID, value: 0 });
@@ -336,12 +338,21 @@ function buildUI() {
     const outXLabel = mkEl("span", "font-size:10px;color:#999;"); outXLabel.textContent = "×";
     const outHInput = mkEl("input", INPUT_CSS, { type: "number", min: 0, step: GRID, value: 0 });
     outHInput.placeholder = "auto";
-    outSizeRow.append(outLabel, outWInput, outXLabel, outHInput);
+    const maskColorLabel = mkEl("span", "font-size:10px;color:#999;margin-left:24px;"); maskColorLabel.textContent = "pad color:";
+    const SELECT_CSS = "padding:2px 5px;font-size:11px;font-family:monospace;background:#1e1e1e;color:#ccc;border:1px solid #444;border-radius:4px;cursor:pointer;";
+    const maskColorSelect = mkEl("select", SELECT_CSS);
+    for (const [val, label] of [["wan", "wan (gray)"], ["ltx", "ltx (black)"], ["custom", "custom"]]) {
+        const opt = document.createElement("option");
+        opt.value = val; opt.textContent = label;
+        maskColorSelect.appendChild(opt);
+    }
+    const customColorInput = mkEl("input", INPUT_CSS + "width:100px;display:none;", { type: "text", value: "128,128,128", placeholder: "#RRGGBB or R,G,B" });
+    outSizeRow.append(outLabel, outWInput, outXLabel, outHInput, maskColorLabel, maskColorSelect, customColorInput);
 
     ctrl.append(scrubRow, cropSizeRow, presetRow, snapRow, outSizeRow);
     root.append(wrap, ctrl);
 
-    return { root, wrap, viewport, zoomIndicator, sfEl, frameImg, srcLabel, noDataMsg, maskTop, maskBot, maskLeft, maskRight, cropBox, arBtn, snapBtns, scrubber, scrubIdx, wInput, hInput, resetBtn, chipBtns, sizeLabel, padLabelT, padLabelB, padLabelL, padLabelR, edges, outWInput, outHInput };
+    return { root, wrap, viewport, zoomIndicator, sfEl, frameImg, srcLabel, noDataMsg, maskTop, maskBot, maskLeft, maskRight, cropBox, arBtn, snapBtns, scrubber, scrubIdx, wInput, hInput, resetBtn, chipBtns, sizeLabel, padLabelT, padLabelB, padLabelL, padLabelR, edges, outWInput, outHInput, maskColorSelect, customColorInput };
 }
 
 // ── Render ────────────────────────────────────────────────────────────
@@ -471,6 +482,10 @@ function syncWidgets(st, widgets, node) {
     const s = quantizeSrc(crToSrc(st.cr, st.sf, st.scale));
     if (widgets.cropState)
         widgets.cropState.value = `${s.x},${s.y},${s.w},${s.h},${st.outW},${st.outH},${st.arLocked ? 1 : 0}`;
+    if (widgets.maskColor)
+        widgets.maskColor.value = st.maskColor;
+    if (widgets.customColor)
+        widgets.customColor.value = st.customColor;
     if (node.graph) node.graph.setDirtyCanvas(true, true);
 }
 
@@ -787,6 +802,29 @@ function wireInteractions(st, dom, widgets, node, nodeId) {
         st.cr = srcToCr(s, st.sf, st.scale);
         render(st, dom); syncWidgets(st, widgets, node);
     });
+
+    // ── Mask color controls ──
+    dom.maskColorSelect.value = st.maskColor;
+    dom.customColorInput.style.display = st.maskColor === "custom" ? "inline-block" : "none";
+    dom.customColorInput.value = st.customColor;
+
+    dom.maskColorSelect.addEventListener("change", () => {
+        st.maskColor = dom.maskColorSelect.value;
+        dom.customColorInput.style.display = st.maskColor === "custom" ? "inline-block" : "none";
+        syncWidgets(st, widgets, node);
+    });
+    dom.customColorInput.addEventListener("change", () => {
+        st.customColor = dom.customColorInput.value.trim();
+        syncWidgets(st, widgets, node);
+    });
+}
+
+// ── Mask color DOM sync ───────────────────────────────────────────────
+
+function applyMaskColorToDOM(st, dom) {
+    dom.maskColorSelect.value = st.maskColor;
+    dom.customColorInput.style.display = st.maskColor === "custom" ? "inline-block" : "none";
+    dom.customColorInput.value = st.customColor;
 }
 
 // ── Resize observer ───────────────────────────────────────────────────
@@ -830,13 +868,16 @@ app.registerExtension({
 
             // Find canvas-managed widgets.
             const widgets = {
-                cropState: node.widgets?.find(w => w.name === "crop_state"),
+                cropState:   node.widgets?.find(w => w.name === "crop_state"),
+                maskColor:   node.widgets?.find(w => w.name === "mask_color"),
+                customColor: node.widgets?.find(w => w.name === "custom_color"),
             };
 
-            // Remove the input connector for crop_state (canvas-driven, not wireable).
+            // Remove input connectors for canvas-driven widgets (not wireable).
             if (node.inputs) {
+                const hidden = new Set(["crop_state", "mask_color", "custom_color"]);
                 for (let i = node.inputs.length - 1; i >= 0; i--) {
-                    if (node.inputs[i].name === "crop_state") node.removeInput(i);
+                    if (hidden.has(node.inputs[i].name)) node.removeInput(i);
                 }
             }
 
@@ -849,7 +890,7 @@ app.registerExtension({
                 hideOnZoom: false,
             });
 
-            const CTRL_H = 185; // scrubber + size row + presets + snap + out row + gaps
+            const CTRL_H = 185; // scrubber + size row + presets + snap + out+mask row + gaps
             const NODE_CHROME = 72; // ComfyUI title bar + slot padding overhead
             const MIN_W = 520;
             domWidget.computeSize = () => [440, CANVAS_H + CTRL_H];
@@ -872,11 +913,12 @@ app.registerExtension({
                 // ResizeObserver on dom.wrap handles re-layout
             };
 
-            // Place canvas widget first; hide crop_state from UI.
+            // Place canvas widget first; hide all canvas-managed widgets from native UI.
             if (node.widgets) {
-                const cs = node.widgets.find(w => w.name === "crop_state");
-                node.widgets = [domWidget, ...node.widgets.filter(w => w !== domWidget && w !== cs)];
-                if (cs) { node.widgets.push(cs); cs.computeSize = () => [0, -4]; cs.hidden = true; }
+                const hideNames = new Set(["crop_state", "mask_color", "custom_color"]);
+                const toHide = node.widgets.filter(w => hideNames.has(w.name));
+                node.widgets = [domWidget, ...node.widgets.filter(w => w !== domWidget && !hideNames.has(w.name))];
+                for (const w of toHide) { node.widgets.push(w); w.computeSize = () => [0, -4]; w.hidden = true; }
             }
 
             // Latch crop_state at onConfigure time so the rAF callback always has
@@ -886,7 +928,9 @@ app.registerExtension({
             const origOnConfigure = node.onConfigure;
             node.onConfigure = function (info) {
                 if (origOnConfigure) origOnConfigure.call(this, info);
-                if (widgets.cropState) st._latchedCropState = widgets.cropState.value;
+                if (widgets.cropState)   st._latchedCropState   = widgets.cropState.value;
+                if (widgets.maskColor)   st._latchedMaskColor   = widgets.maskColor.value;
+                if (widgets.customColor) st._latchedCustomColor = widgets.customColor.value;
             };
 
             // Shared helper: apply fetched frame data to the widget.
@@ -929,6 +973,10 @@ app.registerExtension({
                     // Use the value latched at onConfigure time if available.
                     restoreCropFromWidgets(st, widgets, st._latchedCropState);
                     st._latchedCropState = undefined;
+                    // Restore mask color state from saved widget values.
+                    if (st._latchedMaskColor)   { st.maskColor   = st._latchedMaskColor;   st._latchedMaskColor   = undefined; }
+                    if (st._latchedCustomColor) { st.customColor = st._latchedCustomColor; st._latchedCustomColor = undefined; }
+                    applyMaskColorToDOM(st, dom);
                     setArLocked(st, dom, st.arLocked);
                     if (st.outW < GRID || st.outH < GRID) {
                         const d = defaultOut(st); st.outW = d.w; st.outH = d.h;

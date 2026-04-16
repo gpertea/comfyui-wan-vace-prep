@@ -26,7 +26,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LoadVideosFromFolderSimple": "🪐 Load Videos From Folder (Simple)",
     "WanVACEBatchContext": "🪐 VACE Batch Context",
     "FrameNumberOverlay": "🪐 Frame Number Overlay",
-    "VACEOutpaint": "🪐 VACE Outpaint",
+    "VACEOutpaint": "🪐 Video Outpaint",
 }
 
 WEB_DIRECTORY = "./web"
