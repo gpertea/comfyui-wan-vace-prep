@@ -29,7 +29,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "WanVACEBatchContext": "🪐 VACE Batch Context",
     "FrameNumberOverlay": "🪐 Frame Number Overlay",
     "VACEOutpaint": "🪐 VACE Outpaint",
-    "WanVACEInpaint": "🪐 Wan VACE Inpaint",
+    "WanVACEInpaint": "🪐 Wan VACE Inpaint (Experimental)",
 }
 
 WEB_DIRECTORY = "./web"

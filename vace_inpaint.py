@@ -25,7 +25,8 @@ class WanVACEInpaint:
         "preserving the rest. An optional reference image is prepended as a "
         "context frame (mask=0) to guide generation."
     )
-
+    EXPERIMENTAL = True
+    
     def run(self, video, mask, reference_image=None):
         N, H, W, C = video.shape
 
