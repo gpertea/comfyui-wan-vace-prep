@@ -1,7 +1,7 @@
 [project]
 name = "comfyui-wan-vace-prep"
 description = "A small collection of ComfyUI nodes for simplifying common video tasks. Primarily designed for Wan VACE, with LTX-2 outpainting support."
-version = "1.0.19"
+version = "1.0.20"
 license = { text = "MIT" }
 
 dependencies = []
