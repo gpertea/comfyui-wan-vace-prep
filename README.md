@@ -22,7 +22,7 @@ git clone https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep
 - [VACE Extend](#vace-extend)
 - [Load Videos From Folder (Simple)](#load-videos-from-folder-simple)
 
-### Video Outpaint 
+### Video Outpaint
 
 Prepares a video for outpainting using an interactive canvas widget. Position and size an output window over your source frames. Regions outside the source become the outpaint area. Primarily designed for VACE, with support for LTX-2 outpainting via the pad color preset.
 
@@ -213,6 +213,34 @@ See the VHS Meta Batch Manager node documentation for more information.
 | images | Concatenated image batch ready for video creation |
 
 ---
+## Experimental
+
+Stuff here is new and has not been thoroughly tested. Inputs, outputs, and behavior may change in future releases without notice.
+
+### Wan VACE Inpaint
+
+> **Experimental** - new and not well tested. Behavior and interface may change.
+
+Prepares control video and mask for inpainting. An optional reference image can be input as a context frame to guide generation.
+
+**Parameters:**
+
+| Parameter | Default | Description |
+|-|-|-|
+| video | | Source video frames (IMAGE) |
+| mask | | Inpaint mask. White (1) marks regions to regenerate, black (0) preserves the original. Can be a single frame (broadcast to all frames) or a per-frame sequence. |
+| reference_image | *(optional)* | A single image prepended as a context frame with mask=0. Resized automatically if dimensions differ from the video. |
+
+**Outputs:**
+
+| Output | Description |
+|-|-|
+| control_video | VACE control video input. Masked pixels replaced with gray (0.5); reference frame prepended if supplied. |
+| control_mask | VACE control mask input. Matches control_video length; reference frame slot is fully black (0). |
+| width, height | Video dimensions (must be divisible by 16) |
+| length | Frame count (video frames + 1 if reference image provided) |
+
+---
 
 ## Technical Notes
 
@@ -221,6 +249,8 @@ See the VHS Meta Batch Manager node documentation for more information.
 **Class names vs. display names.** Some internal class names (e.g., `WanVACEPrep`) don't match the current display names (e.g., "VACE Join"). This is intentional: renaming classes would break existing workflows that reference them. Once ComfyUI's node renaming API is stable, a refactoring pass will align them.
 
 **Nodes 2.0 renderer.** These nodes have not been tested under ComfyUI's Nodes 2.0 renderer and may or may not work correctly with it. Testing and support will be added sometime after ComfyUI publishes documentation for node developers to work from.
+
+---
 
 ## License
 

@@ -8,6 +8,7 @@ from .load_videos_from_folder import LoadVideosFromFolderSimple
 from .vace_batch_context import WanVACEBatchContext
 from .frame_number_overlay import FrameNumberOverlay
 from .vace_outpaint import VACEOutpaint
+from .vace_inpaint import WanVACEInpaint
 
 NODE_CLASS_MAPPINGS = {
     "WanVACEPrep": WanVACEPrep,
@@ -17,6 +18,7 @@ NODE_CLASS_MAPPINGS = {
     "WanVACEBatchContext": WanVACEBatchContext,
     "FrameNumberOverlay": FrameNumberOverlay,
     "VACEOutpaint": VACEOutpaint,
+    "WanVACEInpaint": WanVACEInpaint,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -27,6 +29,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "WanVACEBatchContext": "🪐 VACE Batch Context",
     "FrameNumberOverlay": "🪐 Frame Number Overlay",
     "VACEOutpaint": "🪐 Video Outpaint",
+    "WanVACEInpaint": "🪐 Wan VACE Inpaint (Experimental)",
 }
 
 WEB_DIRECTORY = "./web"
