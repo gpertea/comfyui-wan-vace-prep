@@ -112,6 +112,7 @@ function initLayout(st, wrapEl) {
     if (W <= 0) return false;
     const maxW = W - MARGIN * 2;
     const maxH = wrapEl.clientHeight - MARGIN * 2;
+    if (maxW <= 0 || maxH <= 0) return false;
     const ar   = st.srcW / st.srcH;
     // Fit source frame inside (maxW × maxH) while preserving aspect ratio.
     let sfW, sfH;
@@ -829,13 +830,32 @@ function applyMaskColorToDOM(st, dom) {
 
 // ── Resize observer ───────────────────────────────────────────────────
 
-function setupResizeObserver(st, dom) {
+function setupResizeObserver(st, dom, widgets) {
     const ro = new ResizeObserver(() => {
-        if (!st.initialized) return;
-        // If the node is collapsed or hidden (H=0), clientHeight is 0, which produces
-        // negative maxH/scale inside initLayout — bail out to preserve valid state.
-        if (dom.wrap.clientHeight <= 0) return;
-        // Preserve source-pixel crop before re-layout.
+        if (dom.wrap.clientHeight <= 0 || dom.wrap.clientWidth <= 0) return;
+
+        if (!st.initialized) {
+            // Deferred initialization: the node was offscreen (clientWidth=0) when the
+            // double-rAF fired so initLayout failed and we skipped the full init sequence.
+            // Complete it now that the wrap has a valid size.
+            if (!initLayout(st, dom.wrap)) return;
+            restoreCropFromWidgets(st, widgets, st._latchedCropState);
+            st._latchedCropState = undefined;
+            if (st._latchedMaskColor)   { st.maskColor   = st._latchedMaskColor;   st._latchedMaskColor   = undefined; }
+            if (st._latchedCustomColor) { st.customColor = st._latchedCustomColor; st._latchedCustomColor = undefined; }
+            applyMaskColorToDOM(st, dom);
+            setArLocked(st, dom, st.arLocked);
+            if (st.outW < GRID || st.outH < GRID) {
+                const d = defaultOut(st); st.outW = d.w; st.outH = d.h;
+            } else {
+                syncOutToAR(st);
+            }
+            fitCropInView(st, dom);
+            render(st, dom);
+            return;
+        }
+
+        // Normal resize path: re-layout while preserving the user's crop position.
         const prevSrc  = crToSrc(st.cr, st.sf, st.scale);
         const prevZoom = st.view.zoom;
         const prevPan  = { ...st.view };
@@ -969,24 +989,33 @@ app.registerExtension({
                 requestAnimationFrame(() => {
                     const nodeId = String(node.id);
 
-                    if (!initLayout(st, dom.wrap)) return;
-                    // Use the value latched at onConfigure time if available.
-                    restoreCropFromWidgets(st, widgets, st._latchedCropState);
-                    st._latchedCropState = undefined;
-                    // Restore mask color state from saved widget values.
-                    if (st._latchedMaskColor)   { st.maskColor   = st._latchedMaskColor;   st._latchedMaskColor   = undefined; }
-                    if (st._latchedCustomColor) { st.customColor = st._latchedCustomColor; st._latchedCustomColor = undefined; }
-                    applyMaskColorToDOM(st, dom);
-                    setArLocked(st, dom, st.arLocked);
-                    if (st.outW < GRID || st.outH < GRID) {
-                        const d = defaultOut(st); st.outW = d.w; st.outH = d.h;
-                    } else {
-                        syncOutToAR(st);
+                    // Attempt layout now. This may fail (return false) if the node is
+                    // offscreen and ComfyUI has not given the DOM widget a real width yet.
+                    // If it fails, we do NOT return early — interactions and the
+                    // ResizeObserver are always wired so that the ResizeObserver can
+                    // complete initialization the first time the node becomes visible.
+                    if (initLayout(st, dom.wrap)) {
+                        // Use the value latched at onConfigure time if available.
+                        restoreCropFromWidgets(st, widgets, st._latchedCropState);
+                        st._latchedCropState = undefined;
+                        // Restore mask color state from saved widget values.
+                        if (st._latchedMaskColor)   { st.maskColor   = st._latchedMaskColor;   st._latchedMaskColor   = undefined; }
+                        if (st._latchedCustomColor) { st.customColor = st._latchedCustomColor; st._latchedCustomColor = undefined; }
+                        applyMaskColorToDOM(st, dom);
+                        setArLocked(st, dom, st.arLocked);
+                        if (st.outW < GRID || st.outH < GRID) {
+                            const d = defaultOut(st); st.outW = d.w; st.outH = d.h;
+                        } else {
+                            syncOutToAR(st);
+                        }
+                        fitCropInView(st, dom);
                     }
-                    fitCropInView(st, dom);
+
+                    // Always wire interactions and set up the ResizeObserver so that
+                    // nodes which start offscreen become fully functional once visible.
                     wireInteractions(st, dom, widgets, node, nodeId);
                     render(st, dom);
-                    setupResizeObserver(st, dom);
+                    setupResizeObserver(st, dom, widgets);
 
                     // Re-display frames after every successful workflow run.
                     // execution_success fires once the whole graph has finished,
