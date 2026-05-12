@@ -967,7 +967,7 @@ app.registerExtension({
                 const hideNames = new Set(["crop_state", "mask_color", "custom_color"]);
                 const toHide = node.widgets.filter(w => hideNames.has(w.name));
                 node.widgets = [domWidget, ...node.widgets.filter(w => w !== domWidget && !hideNames.has(w.name))];
-                for (const w of toHide) { node.widgets.push(w); w.computeSize = () => [0, -4]; w.hidden = true; }
+                for (const w of toHide) { node.widgets.push(w); w.computeSize = () => [0, -4]; w.type = "hidden"; w.hidden = true; }
             }
 
             // Latch crop_state at onConfigure time so the rAF callback always has
