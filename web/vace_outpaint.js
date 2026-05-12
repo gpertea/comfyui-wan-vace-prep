@@ -911,24 +911,53 @@ app.registerExtension({
             });
 
             const CTRL_H = 185; // scrubber + size row + presets + snap + out+mask row + gaps
-            const NODE_CHROME = 72; // ComfyUI title bar + slot padding overhead
+            const NODE_CHROME = 72; // ComfyUI title bar + slot padding overhead (V1)
             const MIN_W = 520;
             domWidget.computeSize = () => [440, CANVAS_H + CTRL_H];
             node.setSize([Math.max(node.size[0], MIN_W), Math.max(node.size[1], CANVAS_H + CTRL_H + NODE_CHROME)]);
             let _prevNodeX = node.pos[0];
+
+            // In V2, node size is derived from dom.root height, so onResize fires as
+            // feedback whenever we change dom.wrap. We break the loop by measuring the
+            // actual overhead (everything above dom.wrap in node height) from V2's first
+            // call, then using that to produce a zero-delta update.
+            const _isV2 = !!(app?.extensionManager);
+            let _overhead = _isV2 ? null : CTRL_H + NODE_CHROME; // V1: static; V2: measured
+            let _lastSetH = -1; // height most recently written to dom.wrap
+
             node.onResize = function(size) {
                 if (size[0] < MIN_W) {
                     if (this.pos[0] !== _prevNodeX) {
                         // Left-edge drag: compensate pos so the right edge stays pinned.
-                        // Without this, clamping size while pos keeps moving looks like a pan.
                         this.pos[0] += size[0] - MIN_W;
                     }
                     size[0] = MIN_W;
                 }
                 _prevNodeX = this.pos[0];
-                // Grow the canvas wrap to fill extra node height, but never feed back
-                // into computeSize (that would cause an infinite expand loop on load).
-                const h = Math.max(CANVAS_H, size[1] - CTRL_H - NODE_CHROME);
+
+                if (_overhead === null) {
+                    // V2 init: size[1] is DOM-derived, so this difference is the exact
+                    // overhead that yields a zero-change equilibrium. Return without
+                    // touching DOM so V2 has nothing new to react to.
+                    if (dom.wrap.offsetHeight > 0) {
+                        _overhead = size[1] - dom.wrap.offsetHeight;
+                    }
+                    return;
+                }
+
+                if (_isV2 && _lastSetH >= 0 && dom.wrap.offsetHeight === _lastSetH) {
+                    // V2 is feeding back after our last dom.wrap change.
+                    // Recalibrate in case V2's chrome value shifted post-init.
+                    const obs = size[1] - dom.wrap.offsetHeight;
+                    if (obs > _overhead) _overhead = obs;
+                }
+
+                const h = Math.max(CANVAS_H, size[1] - _overhead);
+                if (dom.wrap.offsetHeight === h) {
+                    _lastSetH = -1; // settled - next onResize is not our feedback
+                    return;
+                }
+                _lastSetH = h;
                 dom.wrap.style.height = h + "px";
                 // ResizeObserver on dom.wrap handles re-layout
             };
