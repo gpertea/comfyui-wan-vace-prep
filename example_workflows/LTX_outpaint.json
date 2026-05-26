@@ -1,8 +1,8 @@
 {
   "id": "3bb7a4fe-c969-4bf1-ba3f-5c8ef04b93dc",
   "revision": 0,
-  "last_node_id": 3006,
-  "last_link_id": 4747,
+  "last_node_id": 3007,
+  "last_link_id": 4748,
   "nodes": [
     {
       "id": 2894,
@@ -120,7 +120,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 73,
+      "order": 74,
       "mode": 0,
       "inputs": [
         {
@@ -162,7 +162,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 74,
+      "order": 75,
       "mode": 0,
       "inputs": [
         {
@@ -204,7 +204,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 75,
+      "order": 76,
       "mode": 0,
       "inputs": [
         {
@@ -283,7 +283,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 52,
+      "order": 51,
       "mode": 0,
       "inputs": [
         {
@@ -493,7 +493,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 53,
+      "order": 52,
       "mode": 0,
       "inputs": [
         {
@@ -753,7 +753,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 76,
+      "order": 72,
       "mode": 0,
       "inputs": [
         {
@@ -795,7 +795,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 50,
+      "order": 49,
       "mode": 0,
       "inputs": [
         {
@@ -1053,7 +1053,7 @@
         100
       ],
       "flags": {},
-      "order": 67,
+      "order": 64,
       "mode": 0,
       "inputs": [
         {
@@ -1360,7 +1360,7 @@
       ],
       "size": [
         220,
-        492.4128113879004
+        500
       ],
       "flags": {},
       "order": 77,
@@ -2208,7 +2208,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 72,
+      "order": 73,
       "mode": 0,
       "inputs": [
         {
@@ -2379,13 +2379,13 @@
         70
       ],
       "flags": {},
-      "order": 49,
+      "order": 56,
       "mode": 0,
       "inputs": [
         {
           "name": "video",
           "type": "VIDEO",
-          "link": 4732
+          "link": 4748
         }
       ],
       "outputs": [
@@ -2430,7 +2430,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 65,
+      "order": 67,
       "mode": 0,
       "inputs": [
         {
@@ -2472,7 +2472,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 64,
+      "order": 66,
       "mode": 0,
       "inputs": [
         {
@@ -2598,7 +2598,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 56,
+      "order": 55,
       "mode": 0,
       "inputs": [
         {
@@ -2830,7 +2830,7 @@
         110
       ],
       "flags": {},
-      "order": 66,
+      "order": 63,
       "mode": 0,
       "inputs": [
         {
@@ -2875,7 +2875,7 @@
         90
       ],
       "flags": {},
-      "order": 51,
+      "order": 50,
       "mode": 0,
       "inputs": [
         {
@@ -2947,7 +2947,7 @@
       ],
       "size": [
         210,
-        246
+        250
       ],
       "flags": {},
       "order": 47,
@@ -2999,7 +2999,7 @@
       ],
       "size": [
         210,
-        246
+        250
       ],
       "flags": {},
       "order": 61,
@@ -3077,108 +3077,6 @@
       "bgcolor": "#353"
     },
     {
-      "id": 2995,
-      "type": "LoadVideo",
-      "pos": [
-        -1220,
-        870
-      ],
-      "size": [
-        490,
-        400
-      ],
-      "flags": {},
-      "order": 30,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "VIDEO",
-          "type": "VIDEO",
-          "links": [
-            4732
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "LoadVideo"
-      },
-      "widgets_values": [
-        "flf2v_015_00001.mp4",
-        "image"
-      ],
-      "color": "#232",
-      "bgcolor": "#353"
-    },
-    {
-      "id": 2889,
-      "type": "VACEOutpaint",
-      "pos": [
-        -710,
-        650
-      ],
-      "size": [
-        520,
-        630
-      ],
-      "flags": {},
-      "order": 63,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "images",
-          "type": "IMAGE",
-          "link": 4681
-        }
-      ],
-      "outputs": [
-        {
-          "name": "control_video",
-          "type": "IMAGE",
-          "links": [
-            4722
-          ]
-        },
-        {
-          "name": "control_mask",
-          "type": "MASK",
-          "links": null
-        },
-        {
-          "name": "width",
-          "type": "INT",
-          "links": [
-            4633
-          ]
-        },
-        {
-          "name": "height",
-          "type": "INT",
-          "links": [
-            4634
-          ]
-        },
-        {
-          "name": "length",
-          "type": "INT",
-          "links": [
-            4635
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "VACEOutpaint"
-      },
-      "widgets_values": [
-        "",
-        "-544,-560,2016,3584,720,1280,1",
-        "ltx",
-        "128,128,128"
-      ],
-      "color": "#232",
-      "bgcolor": "#353"
-    },
-    {
       "id": 2989,
       "type": "MarkdownNote",
       "pos": [
@@ -3190,7 +3088,7 @@
         280
       ],
       "flags": {},
-      "order": 31,
+      "order": 30,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -3214,7 +3112,7 @@
         110
       ],
       "flags": {},
-      "order": 32,
+      "order": 31,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -3249,7 +3147,7 @@
         100
       ],
       "flags": {},
-      "order": 33,
+      "order": 32,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -3294,7 +3192,7 @@
         60
       ],
       "flags": {},
-      "order": 34,
+      "order": 33,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -3327,7 +3225,7 @@
         60
       ],
       "flags": {},
-      "order": 35,
+      "order": 34,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -3362,7 +3260,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 54,
+      "order": 53,
       "mode": 0,
       "inputs": [
         {
@@ -3404,7 +3302,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 36,
+      "order": 35,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -3441,7 +3339,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 37,
+      "order": 36,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -3472,11 +3370,11 @@
         1050
       ],
       "size": [
-        256.6166595458984,
-        98
+        260,
+        100
       ],
       "flags": {},
-      "order": 55,
+      "order": 54,
       "mode": 0,
       "inputs": [
         {
@@ -3529,7 +3427,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 38,
+      "order": 37,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -3553,7 +3451,7 @@
         730
       ],
       "flags": {},
-      "order": 39,
+      "order": 38,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -3577,7 +3475,7 @@
         110
       ],
       "flags": {},
-      "order": 40,
+      "order": 39,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -3655,6 +3553,108 @@
       },
       "widgets_values": [
         ""
+      ],
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 2889,
+      "type": "VACEOutpaint",
+      "pos": [
+        -710,
+        650
+      ],
+      "size": [
+        520,
+        630
+      ],
+      "flags": {},
+      "order": 65,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 4681
+        }
+      ],
+      "outputs": [
+        {
+          "name": "control_video",
+          "type": "IMAGE",
+          "links": [
+            4722
+          ]
+        },
+        {
+          "name": "control_mask",
+          "type": "MASK",
+          "links": null
+        },
+        {
+          "name": "width",
+          "type": "INT",
+          "links": [
+            4633
+          ]
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "links": [
+            4634
+          ]
+        },
+        {
+          "name": "length",
+          "type": "INT",
+          "links": [
+            4635
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VACEOutpaint"
+      },
+      "widgets_values": [
+        "",
+        "0,0,1280,720,1280,720,1",
+        "ltx",
+        "128,128,128"
+      ],
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 3007,
+      "type": "LoadVideo",
+      "pos": [
+        -1240,
+        840
+      ],
+      "size": [
+        510,
+        430
+      ],
+      "flags": {},
+      "order": 40,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": [
+            4748
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadVideo"
+      },
+      "widgets_values": [
+        null,
+        "image"
       ],
       "color": "#232",
       "bgcolor": "#353"
@@ -4190,14 +4190,6 @@
       "AUDIO"
     ],
     [
-      4732,
-      2995,
-      0,
-      2925,
-      0,
-      "VIDEO"
-    ],
-    [
       4738,
       2985,
       0,
@@ -4260,6 +4252,14 @@
       3003,
       2,
       "VAE"
+    ],
+    [
+      4748,
+      3007,
+      0,
+      2925,
+      0,
+      "VIDEO"
     ]
   ],
   "groups": [
@@ -4351,10 +4351,10 @@
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.5415348665994107,
+      "scale": 0.595688353259352,
       "offset": [
-        2065.1290522877507,
-        -132.74216135849161
+        2150.375589423574,
+        -99.96520625122068
       ]
     },
     "frontendVersion": "1.44.19",
