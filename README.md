@@ -30,7 +30,6 @@ Renamed from *VACE Outpaint*.
 
 ![Video Outpaint Node](assets/vace-outpaint.png)
 
-> **Nodes 2.0 incompatibility:** This node is known to malfunction under ComfyUI's Nodes 2.0 renderer. No fix is planned until ComfyUI publishes node development documentation.
 
 **Parameters:**
 
@@ -248,7 +247,7 @@ Prepares control video and mask for inpainting. An optional reference image can 
 
 **Class names vs. display names.** Some internal class names (e.g., `WanVACEPrep`) don't match the current display names (e.g., "VACE Join"). This is intentional: renaming classes would break existing workflows that reference them. Once ComfyUI's node renaming API is stable, a refactoring pass will align them.
 
-**Nodes 2.0 renderer.** These nodes have not been tested under ComfyUI's Nodes 2.0 renderer and may or may not work correctly with it. Testing and support will be added sometime after ComfyUI publishes documentation for node developers to work from.
+**Nodes 2.0 renderer.** These nodes have not been tested under ComfyUI's Nodes 2.0 renderer and may or may not work correctly with it. Until ComfyUI publishes documentation for node developers, no effort will be spent on ensuring Nodes 2.0 compatibility or stability.
 
 ---
 
