@@ -974,12 +974,15 @@ app.registerExtension({
             // the post-restore value.  Without this, the double-rAF can fire before
             // node.configure() runs the positional widget restore in some loading
             // paths, leaving crop_state.value as the empty default.
+            // Also apply mask/custom color immediately so that even if the rAF fires
+            // first, st.maskColor and st.customColor are already correct by the time
+            // any downstream code reads them.
             const origOnConfigure = node.onConfigure;
             node.onConfigure = function (info) {
                 if (origOnConfigure) origOnConfigure.call(this, info);
                 if (widgets.cropState)   st._latchedCropState   = widgets.cropState.value;
-                if (widgets.maskColor)   st._latchedMaskColor   = widgets.maskColor.value;
-                if (widgets.customColor) st._latchedCustomColor = widgets.customColor.value;
+                if (widgets.maskColor)   { st.maskColor         = widgets.maskColor.value;   st._latchedMaskColor   = undefined; }
+                if (widgets.customColor) { st.customColor       = widgets.customColor.value; st._latchedCustomColor = undefined; }
             };
 
             // Shared helper: apply fetched frame data to the widget.
@@ -1008,6 +1011,10 @@ app.registerExtension({
                 dom.scrubber.max = Math.max(0, data.frame_count - 1);
                 dom.scrubber.value = 0;
                 dom.scrubIdx.textContent = "0 / " + Math.max(0, data.frame_count - 1);
+                // Re-read mask color from the hidden widget (onConfigure may not have
+                // run yet, or the rAF may have written stale state via syncWidgets).
+                if (widgets.maskColor)   st.maskColor   = widgets.maskColor.value;
+                if (widgets.customColor) st.customColor = widgets.customColor.value;
                 fitCropInView(st, dom);
                 render(st, dom);
                 syncWidgets(st, widgets, node);
