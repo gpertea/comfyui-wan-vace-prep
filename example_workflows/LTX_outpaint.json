@@ -1,8 +1,8 @@
 {
   "id": "3bb7a4fe-c969-4bf1-ba3f-5c8ef04b93dc",
   "revision": 0,
-  "last_node_id": 3007,
-  "last_link_id": 4748,
+  "last_node_id": 3009,
+  "last_link_id": 4752,
   "nodes": [
     {
       "id": 2894,
@@ -73,40 +73,6 @@
       "bgcolor": "#335"
     },
     {
-      "id": 2891,
-      "type": "RandomNoise",
-      "pos": [
-        1140,
-        1020
-      ],
-      "size": [
-        210,
-        90
-      ],
-      "flags": {},
-      "order": 2,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "NOISE",
-          "type": "NOISE",
-          "links": [
-            4605
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "RandomNoise"
-      },
-      "widgets_values": [
-        42,
-        "fixed"
-      ],
-      "color": "#223",
-      "bgcolor": "#335"
-    },
-    {
       "id": 2910,
       "type": "SetNode",
       "pos": [
@@ -120,7 +86,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 74,
+      "order": 70,
       "mode": 0,
       "inputs": [
         {
@@ -162,7 +128,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 75,
+      "order": 71,
       "mode": 0,
       "inputs": [
         {
@@ -204,7 +170,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 76,
+      "order": 72,
       "mode": 0,
       "inputs": [
         {
@@ -246,7 +212,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 3,
+      "order": 2,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -283,7 +249,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 51,
+      "order": 47,
       "mode": 0,
       "inputs": [
         {
@@ -325,7 +291,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 4,
+      "order": 3,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -362,7 +328,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 5,
+      "order": 4,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -399,7 +365,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 41,
+      "order": 39,
       "mode": 0,
       "inputs": [
         {
@@ -456,7 +422,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 6,
+      "order": 5,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -493,7 +459,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 52,
+      "order": 48,
       "mode": 0,
       "inputs": [
         {
@@ -535,7 +501,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 59,
+      "order": 55,
       "mode": 0,
       "inputs": [
         {
@@ -572,7 +538,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 7,
+      "order": 6,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -609,7 +575,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 8,
+      "order": 7,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -617,7 +583,7 @@
           "name": "STRING",
           "type": "STRING",
           "links": [
-            4664
+            4752
           ]
         }
       ],
@@ -628,41 +594,6 @@
       },
       "widgets_values": [
         "prompt_positive"
-      ]
-    },
-    {
-      "id": 2945,
-      "type": "GetNode",
-      "pos": [
-        -1250,
-        1670
-      ],
-      "size": [
-        210,
-        60
-      ],
-      "flags": {
-        "collapsed": true
-      },
-      "order": 9,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "AUDIO",
-          "type": "AUDIO",
-          "links": [
-            4726
-          ]
-        }
-      ],
-      "title": "Get_audio_out",
-      "properties": {
-        "Node name for S&R": "GetNode",
-        "aux_id": "kijai/ComfyUI-KJNodes"
-      },
-      "widgets_values": [
-        "audio_out"
       ]
     },
     {
@@ -679,7 +610,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 10,
+      "order": 8,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -716,7 +647,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 11,
+      "order": 9,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -753,7 +684,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 72,
+      "order": 68,
       "mode": 0,
       "inputs": [
         {
@@ -795,7 +726,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 49,
+      "order": 45,
       "mode": 0,
       "inputs": [
         {
@@ -837,7 +768,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 12,
+      "order": 10,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -874,7 +805,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 13,
+      "order": 11,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -911,7 +842,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 14,
+      "order": 12,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -948,7 +879,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 44,
+      "order": 41,
       "mode": 0,
       "inputs": [
         {
@@ -1018,7 +949,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 15,
+      "order": 13,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -1053,7 +984,7 @@
         100
       ],
       "flags": {},
-      "order": 64,
+      "order": 59,
       "mode": 0,
       "inputs": [
         {
@@ -1104,7 +1035,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 16,
+      "order": 14,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -1141,7 +1072,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 17,
+      "order": 15,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -1178,7 +1109,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 18,
+      "order": 16,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -1202,55 +1133,6 @@
       "bgcolor": "#593930"
     },
     {
-      "id": 2792,
-      "type": "LTXVConcatAVLatent",
-      "pos": [
-        1140,
-        1510
-      ],
-      "size": [
-        210,
-        50
-      ],
-      "flags": {},
-      "order": 68,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "video_latent",
-          "type": "LATENT",
-          "link": 4704
-        },
-        {
-          "name": "audio_latent",
-          "type": "LATENT",
-          "link": 4442
-        }
-      ],
-      "outputs": [
-        {
-          "name": "latent",
-          "type": "LATENT",
-          "links": [
-            4604
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "LTXVConcatAVLatent",
-        "cnr_id": "comfy-core",
-        "ver": "0.7.0",
-        "enableTabs": false,
-        "tabWidth": 65,
-        "tabXOffset": 10,
-        "hasSecondTab": false,
-        "secondTabText": "Send Back",
-        "secondTabOffset": 80,
-        "secondTabWidth": 65
-      },
-      "widgets_values": []
-    },
-    {
       "id": 2873,
       "type": "LTXVEmptyLatentAudio",
       "pos": [
@@ -1262,7 +1144,7 @@
         110
       ],
       "flags": {},
-      "order": 57,
+      "order": 54,
       "mode": 0,
       "inputs": [
         {
@@ -1292,7 +1174,7 @@
           "name": "Latent",
           "type": "LATENT",
           "links": [
-            4442
+            4749
           ]
         }
       ],
@@ -1328,7 +1210,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 19,
+      "order": 17,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -1360,10 +1242,10 @@
       ],
       "size": [
         220,
-        500
+        240
       ],
       "flags": {},
-      "order": 77,
+      "order": 73,
       "mode": 0,
       "inputs": [
         {
@@ -1425,7 +1307,7 @@
         80
       ],
       "flags": {},
-      "order": 84,
+      "order": 80,
       "mode": 0,
       "inputs": [
         {
@@ -1484,7 +1366,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 69,
+      "order": 65,
       "mode": 0,
       "inputs": [
         {
@@ -1554,7 +1436,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 81,
+      "order": 77,
       "mode": 0,
       "inputs": [
         {
@@ -1596,7 +1478,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 82,
+      "order": 78,
       "mode": 0,
       "inputs": [
         {
@@ -1638,7 +1520,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 79,
+      "order": 75,
       "mode": 0,
       "inputs": [
         {
@@ -1680,7 +1562,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 20,
+      "order": 18,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -1702,46 +1584,6 @@
       ]
     },
     {
-      "id": 2931,
-      "type": "SetNode",
-      "pos": [
-        1120,
-        2030
-      ],
-      "size": [
-        210,
-        60
-      ],
-      "flags": {
-        "collapsed": true
-      },
-      "order": 60,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "AUDIO",
-          "type": "AUDIO",
-          "link": 4653
-        }
-      ],
-      "outputs": [
-        {
-          "name": "AUDIO",
-          "type": "AUDIO",
-          "links": null
-        }
-      ],
-      "title": "Set_audio_out",
-      "properties": {
-        "Node name for S&R": "SetNode",
-        "aux_id": "kijai/ComfyUI-KJNodes",
-        "previousName": "audio_out"
-      },
-      "widgets_values": [
-        "audio_out"
-      ]
-    },
-    {
       "id": 2980,
       "type": "SetNode",
       "pos": [
@@ -1755,7 +1597,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 86,
+      "order": 81,
       "mode": 0,
       "inputs": [
         {
@@ -1784,127 +1626,6 @@
       "bgcolor": "#535"
     },
     {
-      "id": 2896,
-      "type": "LTXVSeparateAVLatent",
-      "pos": [
-        1700,
-        1180
-      ],
-      "size": [
-        200,
-        50
-      ],
-      "flags": {},
-      "order": 80,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "av_latent",
-          "type": "LATENT",
-          "link": 4611
-        }
-      ],
-      "outputs": [
-        {
-          "name": "video_latent",
-          "type": "LATENT",
-          "links": [
-            4612
-          ]
-        },
-        {
-          "name": "audio_latent",
-          "type": "LATENT",
-          "links": [
-            4718
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "LTXVSeparateAVLatent"
-      },
-      "widgets_values": []
-    },
-    {
-      "id": 2981,
-      "type": "SetNode",
-      "pos": [
-        1920,
-        1230
-      ],
-      "size": [
-        210,
-        60
-      ],
-      "flags": {
-        "collapsed": true
-      },
-      "order": 85,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "LATENT",
-          "type": "LATENT",
-          "link": 4718
-        }
-      ],
-      "outputs": [
-        {
-          "name": "LATENT",
-          "type": "LATENT",
-          "links": null
-        }
-      ],
-      "title": "Set_latent_audio_out",
-      "properties": {
-        "Node name for S&R": "SetNode",
-        "aux_id": "kijai/ComfyUI-KJNodes",
-        "previousName": "latent_audio_out"
-      },
-      "widgets_values": [
-        "latent_audio_out"
-      ],
-      "color": "#323",
-      "bgcolor": "#535"
-    },
-    {
-      "id": 2982,
-      "type": "GetNode",
-      "pos": [
-        630,
-        2020
-      ],
-      "size": [
-        210,
-        60
-      ],
-      "flags": {
-        "collapsed": true
-      },
-      "order": 21,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "LATENT",
-          "type": "LATENT",
-          "links": [
-            4719
-          ]
-        }
-      ],
-      "title": "Get_latent_audio_out",
-      "properties": {
-        "Node name for S&R": "GetNode",
-        "aux_id": "kijai/ComfyUI-KJNodes"
-      },
-      "widgets_values": [
-        "latent_audio_out"
-      ],
-      "color": "#323",
-      "bgcolor": "#535"
-    },
-    {
       "id": 2983,
       "type": "GetNode",
       "pos": [
@@ -1918,7 +1639,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 22,
+      "order": 19,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -1955,7 +1676,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 83,
+      "order": 79,
       "mode": 0,
       "inputs": [
         {
@@ -1995,7 +1716,7 @@
         80
       ],
       "flags": {},
-      "order": 70,
+      "order": 66,
       "mode": 0,
       "inputs": [
         {
@@ -2036,43 +1757,6 @@
       "bgcolor": "#653"
     },
     {
-      "id": 2929,
-      "type": "GetNode",
-      "pos": [
-        630,
-        2060
-      ],
-      "size": [
-        210,
-        60
-      ],
-      "flags": {
-        "collapsed": true
-      },
-      "order": 23,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "VAE",
-          "type": "VAE",
-          "links": [
-            4651
-          ]
-        }
-      ],
-      "title": "Get_vae_audio",
-      "properties": {
-        "Node name for S&R": "GetNode",
-        "aux_id": "kijai/ComfyUI-KJNodes"
-      },
-      "widgets_values": [
-        "vae_audio"
-      ],
-      "color": "#322",
-      "bgcolor": "#533"
-    },
-    {
       "id": 2928,
       "type": "GetNode",
       "pos": [
@@ -2086,7 +1770,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 24,
+      "order": 20,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -2110,91 +1794,6 @@
       "bgcolor": "#533"
     },
     {
-      "id": 2899,
-      "type": "VAEDecodeAudio",
-      "pos": [
-        890,
-        2000
-      ],
-      "size": [
-        190,
-        50
-      ],
-      "flags": {},
-      "order": 45,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "samples",
-          "type": "LATENT",
-          "link": 4719
-        },
-        {
-          "name": "vae",
-          "type": "VAE",
-          "link": 4651
-        }
-      ],
-      "outputs": [
-        {
-          "name": "AUDIO",
-          "type": "AUDIO",
-          "links": [
-            4653
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "VAEDecodeAudio"
-      },
-      "widgets_values": [],
-      "color": "#223",
-      "bgcolor": "#335"
-    },
-    {
-      "id": 2898,
-      "type": "VAEDecode",
-      "pos": [
-        1070,
-        1810
-      ],
-      "size": [
-        190,
-        50
-      ],
-      "flags": {},
-      "order": 46,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "samples",
-          "type": "LATENT",
-          "link": 4720
-        },
-        {
-          "name": "vae",
-          "type": "VAE",
-          "link": 4650
-        }
-      ],
-      "outputs": [
-        {
-          "name": "IMAGE",
-          "type": "IMAGE",
-          "links": [
-            4713,
-            4743
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "VAEDecode"
-      },
-      "widgets_values": [],
-      "color": "#223",
-      "bgcolor": "#335"
-    },
-    {
       "id": 2909,
       "type": "SetNode",
       "pos": [
@@ -2208,7 +1807,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 73,
+      "order": 69,
       "mode": 0,
       "inputs": [
         {
@@ -2248,7 +1847,7 @@
         80
       ],
       "flags": {},
-      "order": 62,
+      "order": 57,
       "mode": 0,
       "inputs": [
         {
@@ -2302,7 +1901,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 71,
+      "order": 67,
       "mode": 0,
       "inputs": [
         {
@@ -2344,7 +1943,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 25,
+      "order": 21,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -2379,13 +1978,13 @@
         70
       ],
       "flags": {},
-      "order": 56,
+      "order": 53,
       "mode": 0,
       "inputs": [
         {
           "name": "video",
           "type": "VIDEO",
-          "link": 4748
+          "link": 4751
         }
       ],
       "outputs": [
@@ -2430,7 +2029,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 67,
+      "order": 63,
       "mode": 0,
       "inputs": [
         {
@@ -2472,7 +2071,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 66,
+      "order": 62,
       "mode": 0,
       "inputs": [
         {
@@ -2510,7 +2109,7 @@
         80
       ],
       "flags": {},
-      "order": 42,
+      "order": 51,
       "mode": 0,
       "inputs": [
         {
@@ -2563,7 +2162,7 @@
         520
       ],
       "flags": {},
-      "order": 58,
+      "order": 60,
       "mode": 0,
       "inputs": [
         {
@@ -2598,7 +2197,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 55,
+      "order": 52,
       "mode": 0,
       "inputs": [
         {
@@ -2638,7 +2237,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 48,
+      "order": 44,
       "mode": 0,
       "inputs": [
         {
@@ -2676,7 +2275,7 @@
         290
       ],
       "flags": {},
-      "order": 78,
+      "order": 74,
       "mode": 0,
       "inputs": [
         {
@@ -2757,7 +2356,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 26,
+      "order": 22,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -2795,7 +2394,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 27,
+      "order": 23,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -2830,7 +2429,7 @@
         110
       ],
       "flags": {},
-      "order": 63,
+      "order": 58,
       "mode": 0,
       "inputs": [
         {
@@ -2875,7 +2474,7 @@
         90
       ],
       "flags": {},
-      "order": 50,
+      "order": 46,
       "mode": 0,
       "inputs": [
         {
@@ -2917,7 +2516,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 28,
+      "order": 24,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -2950,7 +2549,7 @@
         250
       ],
       "flags": {},
-      "order": 47,
+      "order": 43,
       "mode": 0,
       "inputs": [
         {
@@ -3002,7 +2601,7 @@
         250
       ],
       "flags": {},
-      "order": 61,
+      "order": 56,
       "mode": 0,
       "inputs": [
         {
@@ -3054,7 +2653,7 @@
         60
       ],
       "flags": {},
-      "order": 29,
+      "order": 25,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -3088,7 +2687,7 @@
         280
       ],
       "flags": {},
-      "order": 30,
+      "order": 26,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -3112,7 +2711,7 @@
         110
       ],
       "flags": {},
-      "order": 31,
+      "order": 27,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -3147,7 +2746,7 @@
         100
       ],
       "flags": {},
-      "order": 32,
+      "order": 28,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -3192,7 +2791,7 @@
         60
       ],
       "flags": {},
-      "order": 33,
+      "order": 29,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -3225,7 +2824,7 @@
         60
       ],
       "flags": {},
-      "order": 34,
+      "order": 30,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -3260,7 +2859,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 53,
+      "order": 49,
       "mode": 0,
       "inputs": [
         {
@@ -3302,7 +2901,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 35,
+      "order": 31,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -3339,7 +2938,7 @@
       "flags": {
         "collapsed": true
       },
-      "order": 36,
+      "order": 32,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -3374,7 +2973,7 @@
         100
       ],
       "flags": {},
-      "order": 54,
+      "order": 50,
       "mode": 0,
       "inputs": [
         {
@@ -3427,7 +3026,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 37,
+      "order": 33,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -3438,6 +3037,173 @@
       ],
       "color": "#432",
       "bgcolor": "#653"
+    },
+    {
+      "id": 2896,
+      "type": "LTXVSeparateAVLatent",
+      "pos": [
+        1690,
+        1200
+      ],
+      "size": [
+        200,
+        50
+      ],
+      "flags": {},
+      "order": 76,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "av_latent",
+          "type": "LATENT",
+          "link": 4611
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video_latent",
+          "type": "LATENT",
+          "links": [
+            4612
+          ]
+        },
+        {
+          "name": "audio_latent",
+          "type": "LATENT",
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LTXVSeparateAVLatent"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 2898,
+      "type": "VAEDecode",
+      "pos": [
+        1070,
+        1810
+      ],
+      "size": [
+        190,
+        50
+      ],
+      "flags": {},
+      "order": 42,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 4720
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 4650
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            4713,
+            4743
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": [],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 2945,
+      "type": "GetNode",
+      "pos": [
+        -1250,
+        1670
+      ],
+      "size": [
+        210,
+        60
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 34,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            4726
+          ]
+        }
+      ],
+      "title": "Get_audio",
+      "properties": {
+        "Node name for S&R": "GetNode",
+        "aux_id": "kijai/ComfyUI-KJNodes"
+      },
+      "widgets_values": [
+        "audio"
+      ]
+    },
+    {
+      "id": 2792,
+      "type": "LTXVConcatAVLatent",
+      "pos": [
+        1140,
+        1510
+      ],
+      "size": [
+        210,
+        50
+      ],
+      "flags": {},
+      "order": 64,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video_latent",
+          "type": "LATENT",
+          "link": 4704
+        },
+        {
+          "name": "audio_latent",
+          "type": "LATENT",
+          "link": 4749
+        }
+      ],
+      "outputs": [
+        {
+          "name": "latent",
+          "type": "LATENT",
+          "links": [
+            4604
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LTXVConcatAVLatent",
+        "cnr_id": "comfy-core",
+        "ver": "0.7.0",
+        "enableTabs": false,
+        "tabWidth": 65,
+        "tabXOffset": 10,
+        "hasSecondTab": false,
+        "secondTabText": "Send Back",
+        "secondTabOffset": 80,
+        "secondTabWidth": 65
+      },
+      "widgets_values": []
     },
     {
       "id": 2990,
@@ -3451,17 +3217,51 @@
         730
       ],
       "flags": {},
-      "order": 38,
+      "order": 35,
       "mode": 0,
       "inputs": [],
       "outputs": [],
       "title": "README",
       "properties": {},
       "widgets_values": [
-        "[Github](https://github.com/stuttlepress) | [CivitAI](https://civitai.com/user/__Bob__) \n***\n*You're free to do whatever you want with this workflow, but it makes me feel good when you give me credit. Redistributing it without attribution is kind of lame.*\n\n***\n\n# How to Use This Workflow\n\n## 1. Install the requirements listed above.\n\n## 2. Select models\n* Point the brown Load nodes at the checkpoint and loras on your system. This workflow expects to run with full LTX-2.3 dev models and distilled lora.\n\n## 3. Load your video\n* \n\n## 4. Run *just the VACE Outpaint Prep node* to populate it with your video.  \nDo one of the following:\n   * Click the node, then click the blue **Run** button in the icon bar that appears above it (not the Run button at the top of the ComfyUI window).\n   * If you have [rgthree](https://github.com/rgthree/rgthree-comfy) installed, right click the node and select *Queue Selected Output Nodes (rgthree)*.  \n\nAfter your video has loaded, you can scrub through it with the **frame** slider. This has no effect on output.\n## 5. Select output.  \n   * Adjust the selection box to frame your desired output. Red areas will be generated by the VACE model. \n   * Confirm **output resolution** matches your target.\n   * Confirm *LTX (Black)* is selected for **Pad Color**.\n## 7. Prompt.\nEnter a prompt describing the scene, especially what's in the outpainted area.\n## 8. Run the workflow.\nThe outpainted video will be placed in your ComfyUI *output* directory, named something like `outpainted_0001.mp4`\n"
+        "[Github](https://github.com/stuttlepress) | [CivitAI](https://civitai.com/user/__Bob__) \n***\n*You're free to do whatever you want with this workflow, but it makes me feel good when you give me credit. Redistributing it without attribution is kind of lame.*\n\n***\n\n# How to Use This Workflow\n\n## 1. Install the requirements listed above\n\n## 2. Select models\n* Point the brown Load nodes at the checkpoint and loras on your system. This workflow expects to run with full LTX-2.3 dev models and distilled lora.\n\n## 3. Load your video\n\n## 4. Run *just the VACE Outpaint Prep node* to populate it with your video.  \nDo one of the following:\n   * Click the node, then click the blue **Run** button in the icon bar that appears above it (not the Run button at the top of the ComfyUI window).\n   * If you have [rgthree](https://github.com/rgthree/rgthree-comfy) installed, right click the node and select *Queue Selected Output Nodes (rgthree)*.  \n\nAfter your video has loaded, you can scrub through it with the **frame** slider. This has no effect on output.\n## 5. Select output  \n   * Adjust the selection box to frame your desired output. Red areas will be generated by the VACE model. \n   * Confirm **output resolution** matches your target.\n   * Confirm *LTX (Black)* is selected for **Pad Color**.\n## 7. Prompt\nEnter a prompt describing the scene, especially what's in the outpainted area.\n\n## 8. Run the workflow\nThe outpainted video will be placed in your ComfyUI *output* directory, named something like `outpainted_0001.mp4`.\n"
       ],
       "color": "#232",
       "bgcolor": "#353"
+    },
+    {
+      "id": 2891,
+      "type": "RandomNoise",
+      "pos": [
+        1140,
+        1020
+      ],
+      "size": [
+        210,
+        90
+      ],
+      "flags": {},
+      "order": 36,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "NOISE",
+          "type": "NOISE",
+          "links": [
+            4605
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RandomNoise"
+      },
+      "widgets_values": [
+        42,
+        "fixed"
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
     },
     {
       "id": 2937,
@@ -3475,7 +3275,7 @@
         110
       ],
       "flags": {},
-      "order": 39,
+      "order": 37,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -3498,61 +3298,35 @@
       "bgcolor": "#353"
     },
     {
-      "id": 2721,
-      "type": "CLIPTextEncode",
+      "id": 3009,
+      "type": "LoadVideo",
       "pos": [
-        730,
-        640
+        -1230,
+        850
       ],
       "size": [
-        210,
-        90
+        490,
+        420
       ],
-      "flags": {
-        "collapsed": true
-      },
-      "order": 43,
+      "flags": {},
+      "order": 38,
       "mode": 0,
-      "inputs": [
-        {
-          "name": "clip",
-          "type": "CLIP",
-          "link": 4694
-        },
-        {
-          "name": "text",
-          "type": "STRING",
-          "widget": {
-            "name": "text"
-          },
-          "link": 4664
-        }
-      ],
+      "inputs": [],
       "outputs": [
         {
-          "name": "CONDITIONING",
-          "type": "CONDITIONING",
+          "name": "VIDEO",
+          "type": "VIDEO",
           "links": [
-            4440,
-            4666
+            4751
           ]
         }
       ],
-      "title": "CLIP Text Encode",
       "properties": {
-        "Node name for S&R": "CLIPTextEncode",
-        "cnr_id": "comfy-core",
-        "ver": "0.3.56",
-        "enableTabs": false,
-        "tabWidth": 65,
-        "tabXOffset": 10,
-        "hasSecondTab": false,
-        "secondTabText": "Send Back",
-        "secondTabOffset": 80,
-        "secondTabWidth": 65
+        "Node name for S&R": "LoadVideo"
       },
       "widgets_values": [
-        ""
+        null,
+        "image"
       ],
       "color": "#232",
       "bgcolor": "#353"
@@ -3569,7 +3343,7 @@
         630
       ],
       "flags": {},
-      "order": 65,
+      "order": 61,
       "mode": 0,
       "inputs": [
         {
@@ -3626,35 +3400,61 @@
       "bgcolor": "#353"
     },
     {
-      "id": 3007,
-      "type": "LoadVideo",
+      "id": 2721,
+      "type": "CLIPTextEncode",
       "pos": [
-        -1240,
-        840
+        730,
+        640
       ],
       "size": [
-        510,
-        430
+        210,
+        90
       ],
-      "flags": {},
+      "flags": {
+        "collapsed": true
+      },
       "order": 40,
       "mode": 0,
-      "inputs": [],
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 4694
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 4752
+        }
+      ],
       "outputs": [
         {
-          "name": "VIDEO",
-          "type": "VIDEO",
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
           "links": [
-            4748
+            4440,
+            4666
           ]
         }
       ],
+      "title": "CLIP Text Encode",
       "properties": {
-        "Node name for S&R": "LoadVideo"
+        "Node name for S&R": "CLIPTextEncode",
+        "cnr_id": "comfy-core",
+        "ver": "0.3.56",
+        "enableTabs": false,
+        "tabWidth": 65,
+        "tabXOffset": 10,
+        "hasSecondTab": false,
+        "secondTabText": "Send Back",
+        "secondTabOffset": 80,
+        "secondTabWidth": 65
       },
       "widgets_values": [
-        null,
-        "image"
+        ""
       ],
       "color": "#232",
       "bgcolor": "#353"
@@ -3668,14 +3468,6 @@
       2767,
       0,
       "CONDITIONING"
-    ],
-    [
-      4442,
-      2873,
-      0,
-      2792,
-      1,
-      "LATENT"
     ],
     [
       4578,
@@ -3878,22 +3670,6 @@
       "VAE"
     ],
     [
-      4651,
-      2929,
-      0,
-      2899,
-      1,
-      "VAE"
-    ],
-    [
-      4653,
-      2899,
-      0,
-      2931,
-      0,
-      "AUDIO"
-    ],
-    [
       4654,
       2932,
       0,
@@ -3907,14 +3683,6 @@
       0,
       2939,
       0,
-      "STRING"
-    ],
-    [
-      4664,
-      2941,
-      0,
-      2721,
-      1,
       "STRING"
     ],
     [
@@ -4134,22 +3902,6 @@
       "LATENT"
     ],
     [
-      4718,
-      2896,
-      1,
-      2981,
-      0,
-      "LATENT"
-    ],
-    [
-      4719,
-      2982,
-      0,
-      2899,
-      0,
-      "LATENT"
-    ],
-    [
       4720,
       2983,
       0,
@@ -4254,12 +4006,28 @@
       "VAE"
     ],
     [
-      4748,
-      3007,
+      4749,
+      2873,
+      0,
+      2792,
+      1,
+      "LATENT"
+    ],
+    [
+      4751,
+      3009,
       0,
       2925,
       0,
       "VIDEO"
+    ],
+    [
+      4752,
+      2941,
+      0,
+      2721,
+      1,
+      "STRING"
     ]
   ],
   "groups": [
@@ -4351,10 +4119,10 @@
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.595688353259352,
+      "scale": 0.7928611981882012,
       "offset": [
-        2150.375589423574,
-        -99.96520625122068
+        1442.2719544896515,
+        -247.76659744521072
       ]
     },
     "frontendVersion": "1.44.19",
