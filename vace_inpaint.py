@@ -1,5 +1,4 @@
 import torch
-import torch.nn.functional as F
 
 
 class WanVACEInpaint:
@@ -10,9 +9,6 @@ class WanVACEInpaint:
                 "video": ("IMAGE",),
                 "mask": ("MASK",),
             },
-            "optional": {
-                "reference_image": ("IMAGE",),
-            },
         }
 
     RETURN_TYPES = ("IMAGE", "MASK", "INT", "INT", "INT")
@@ -22,12 +18,11 @@ class WanVACEInpaint:
     DESCRIPTION = (
         "Prepares a video for VACE inpainting. Masked regions (mask=1) are "
         "replaced with a gray placeholder so Wan VACE will regenerate them while "
-        "preserving the rest. An optional reference image is prepended as a "
-        "context frame (mask=0) to guide generation."
+        "preserving the rest."
     )
     EXPERIMENTAL = True
     
-    def run(self, video, mask, reference_image=None):
+    def run(self, video, mask):
         N, H, W, C = video.shape
 
         if W % 16 != 0 or H % 16 != 0:
@@ -58,27 +53,6 @@ class WanVACEInpaint:
         mask_bool = mask > 0.5  # [N, H, W]
         masked_video[mask_bool] = 0.5
 
-        if reference_image is not None:
-            ref = reference_image[0:1]  # [1, H_ref, W_ref, C]
-            ref_h, ref_w = ref.shape[1], ref.shape[2]
-            if ref_h != H or ref_w != W:
-                print(
-                    f"[WanVACEInpaint] Resizing reference image from "
-                    f"{ref_w}x{ref_h} to {W}x{H}"
-                )
-                ref = ref.permute(0, 3, 1, 2)  # [1, C, H_ref, W_ref]
-                ref = F.interpolate(ref, size=(H, W), mode="bilinear", align_corners=False)
-                ref = ref.permute(0, 2, 3, 1)  # [1, H, W, C]
-
-            control_video = torch.cat([ref, masked_video], dim=0)
-            ref_mask = torch.zeros(1, H, W, dtype=mask.dtype, device=mask.device)
-            control_mask = torch.cat([ref_mask, mask], dim=0)
-            length = N + 1
-        else:
-            control_video = masked_video
-            control_mask = mask
-            length = N
-
-        return (control_video, control_mask, W, H, length)
+        return (masked_video, mask, W, H, N)
 
 

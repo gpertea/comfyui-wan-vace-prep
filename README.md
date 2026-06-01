@@ -220,7 +220,7 @@ Stuff here is new and has not been thoroughly tested. Inputs, outputs, and behav
 
 > **Experimental** - new and not well tested. Behavior and interface may change.
 
-Prepares control video and mask for inpainting. An optional reference image can be input as a context frame to guide generation.
+Prepares control video and mask for inpainting. Connect the output to `WanVaceToVideo.control_video` / `control_masks`; use `WanVaceToVideo.reference_image` separately if you need a reference frame.
 
 **Parameters:**
 
@@ -228,16 +228,15 @@ Prepares control video and mask for inpainting. An optional reference image can 
 |-|-|-|
 | video | | Source video frames (IMAGE) |
 | mask | | Inpaint mask. White (1) marks regions to regenerate, black (0) preserves the original. Can be a single frame (broadcast to all frames) or a per-frame sequence. |
-| reference_image | *(optional)* | A single image prepended as a context frame with mask=0. Resized automatically if dimensions differ from the video. |
 
 **Outputs:**
 
 | Output | Description |
 |-|-|
-| control_video | VACE control video input. Masked pixels replaced with gray (0.5); reference frame prepended if supplied. |
-| control_mask | VACE control mask input. Matches control_video length; reference frame slot is fully black (0). |
+| control_video | VACE control video input. Masked pixels replaced with gray (0.5). |
+| control_mask | VACE control mask input. White (1) where inpainting should occur, black (0) over preserved content. |
 | width, height | Video dimensions (must be divisible by 16) |
-| length | Frame count (video frames + 1 if reference image provided) |
+| length | Frame count (matches input video) |
 
 ---
 
