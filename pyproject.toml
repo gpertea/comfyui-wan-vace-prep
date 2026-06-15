@@ -7,7 +7,7 @@ license = { text = "MIT" }
 dependencies = []
 
 [project.urls]
-Repository = "https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep"
+Repository = "https://github.com/gpertea/ComfyUI-Wan-VACE-Prep"
 
 [tool.comfy]
 PublisherId = "stuttlepress"

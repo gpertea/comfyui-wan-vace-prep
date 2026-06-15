@@ -12,7 +12,7 @@ A small collection of ComfyUI nodes for common video tasks. Primarily designed f
 
 ```bash
 cd /path/to/comfyui/custom_nodes
-git clone https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep
+git clone https://github.com/gpertea/ComfyUI-Wan-VACE-Prep
 ```
 
 ## Nodes
@@ -20,6 +20,7 @@ git clone https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep
 - [Video Outpaint](#video-outpaint) *(formerly VACE Outpaint)*
 - [VACE Join](#vace-join)
 - [VACE Join (Batch)](#vace-join-batch)
+- [VACE Transition Color Correct](#vace-transition-color-correct)
 - [VACE Batch Context](#vace-batch-context)
 - [VACE Extend](#vace-extend)
 - [Load Videos From Folder (Simple)](#load-videos-from-folder-simple)
@@ -137,6 +138,45 @@ Batch-aware version of VACE Join for processing multiple video pairs. Handles fi
 | start_images | Video segment from video_1 to preserve (excludes transition region) |
 | end_images | Video segment from video_2 to preserve (only populated on last iteration) |
 | context_frames, replace_frames, new_frames | Parameter passthrough for optional downstream wiring |
+
+---
+
+### VACE Transition Color Correct
+
+Applies bounded luma/chroma correction to a generated VACE transition batch.
+Use it after `WanVaceToVideo` / VAE decode and before crossfade or lossless
+transition save.
+
+The node uses the original `control_video` context frames as anchors and adjusts
+the generated `vace_output` with separate brightness and per-channel color
+strengths. This is intended to reduce VACE brightness, saturation, and RGB mean
+drift. It does not restore detail that was lost during generation.
+
+**Recommended placement in the v2.5 clip join workflow:**
+
+`Set_vace_output -> VACE Transition Color Correct -> color match? / cross fade? -> Set_clip2 -> Clip2 Lossless Save`
+
+**Parameters:**
+
+| Parameter | Default | Description |
+|-|-|-|
+| control_video | | VACE control video from VACE Join or VACE Join (Batch) |
+| vace_output | | Decoded VACE output image batch |
+| context_frames | 8 | Context frames at each end of the transition batch |
+| enabled | true | Return input unchanged when disabled |
+| correction_strength | 0.75 | Overall correction amount |
+| luma_strength | 0.75 | Brightness/luminosity matching strength |
+| chroma_strength | 0.60 | Per-channel color/saturation matching strength |
+| smooth_window | 12.0 | Gaussian smoothing sigma for the target color curve |
+| min_gain | 0.75 | Lower bound for per-channel gain |
+| max_gain | 1.25 | Upper bound for per-channel gain |
+| debug | false | Log correction summary to the console |
+
+**Outputs:**
+
+| Output | Description |
+|-|-|
+| vace_output | Corrected transition image batch |
 
 ---
 
@@ -264,7 +304,8 @@ Stuff here is new and has not been thoroughly tested. Inputs, outputs, and behav
 
 ### VACE Inpaint
 
-Prepares control video and mask for inpainting. Connect the output to `WanVaceToVideo.control_video` / `control_masks`; use `WanVaceToVideo.reference_image` separately if you need a reference frame.
+Prepares control video and mask for inpainting. An optional reference image can
+be input as a context frame to guide generation.
 
 **Parameters:**
 
@@ -272,15 +313,16 @@ Prepares control video and mask for inpainting. Connect the output to `WanVaceTo
 |-|-|-|
 | video | | Source video frames (IMAGE) |
 | mask | | Inpaint mask. White (1) marks regions to regenerate, black (0) preserves the original. Can be a single frame (broadcast to all frames) or a per-frame sequence. |
+| reference_image | *(optional)* | A single image prepended as a context frame with mask=0. Resized automatically if dimensions differ from the video. |
 
 **Outputs:**
 
 | Output | Description |
 |-|-|
-| control_video | VACE control video input. Masked pixels replaced with gray (0.5). |
-| control_mask | VACE control mask input. White (1) where inpainting should occur, black (0) over preserved content. |
+| control_video | VACE control video input. Masked pixels replaced with gray (0.5); reference frame prepended if supplied. |
+| control_mask | VACE control mask input. Matches control_video length; reference frame slot is fully black (0). |
 | width, height | Video dimensions (must be divisible by 16) |
-| length | Frame count (matches input video) |
+| length | Frame count (video frames + 1 if reference image provided) |
 
 ---
 
