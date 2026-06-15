@@ -14,9 +14,9 @@ from .wan_first_middle_last_frame import WanFirstMiddleLastFrameToVideo
 from .vace_first_middle_last import WanVACEFirstMiddleLast
 from .vace_outpaint import VACEOutpaint
 from .duration import Duration
+from .vace_color_correct import WanVACETransitionColorCorrect
 
-# Node display names come from each node's Schema.display_name, so no
-# NODE_DISPLAY_NAME_MAPPINGS is needed here.
+## node display names come from each node's schema
 
 
 class WanVacePrepExtension(ComfyExtension):
@@ -33,6 +33,7 @@ class WanVacePrepExtension(ComfyExtension):
             WanVACEFirstMiddleLast,
             VACEOutpaint,
             Duration,
+            WanVACETransitionColorCorrect,
         ]
 
 
