@@ -1,8 +1,8 @@
 {
   "id": "fa460fa0-94f0-47c6-887e-490dd9f164ef",
   "revision": 0,
-  "last_node_id": 76,
-  "last_link_id": 117,
+  "last_node_id": 68,
+  "last_link_id": 122,
   "nodes": [
     {
       "id": 4,
@@ -12,11 +12,11 @@
         2390
       ],
       "size": [
-        210,
-        254
+        225,
+        328
       ],
       "flags": {},
-      "order": 22,
+      "order": 16,
       "mode": 0,
       "inputs": [
         {
@@ -126,15 +126,15 @@
       "id": 24,
       "type": "KSamplerAdvanced",
       "pos": [
-        -2990,
+        -2970,
         2390
       ],
       "size": [
-        252.39999389648438,
-        478.72499656677246
+        260,
+        483
       ],
       "flags": {},
-      "order": 23,
+      "order": 17,
       "mode": 0,
       "inputs": [
         {
@@ -174,7 +174,7 @@
       },
       "widgets_values": [
         "enable",
-        857950582128015,
+        972758070390585,
         "randomize",
         4,
         1,
@@ -192,11 +192,11 @@
       "type": "VAELoader",
       "pos": [
         -3720,
-        2120
+        2150
       ],
       "size": [
         390,
-        58
+        80
       ],
       "flags": {
         "collapsed": false
@@ -229,15 +229,15 @@
       "id": 25,
       "type": "KSamplerAdvanced",
       "pos": [
-        -2710,
+        -2690,
         2390
       ],
       "size": [
-        252.39999389648438,
-        478.72499656677246
+        260,
+        483
       ],
       "flags": {},
-      "order": 24,
+      "order": 18,
       "mode": 0,
       "inputs": [
         {
@@ -294,17 +294,17 @@
       "id": 7,
       "type": "CLIPTextEncode",
       "pos": [
-        -4290,
-        2050
+        -4200,
+        2020
       ],
       "size": [
-        210,
-        88
+        225,
+        116
       ],
       "flags": {
         "collapsed": false
       },
-      "order": 19,
+      "order": 13,
       "mode": 0,
       "inputs": [
         {
@@ -335,19 +335,112 @@
       "bgcolor": "#533"
     },
     {
-      "id": 12,
-      "type": "UNETLoader",
+      "id": 37,
+      "type": "MarkdownNote",
       "pos": [
-        -3720,
-        1670
+        -3210,
+        1960
       ],
       "size": [
-        390,
-        82
+        710,
+        319.70001220703125
       ],
       "flags": {},
       "order": 1,
       "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "Models",
+      "properties": {},
+      "widgets_values": [
+        "# Select your preferred Wan VACE, CLIP and VAE models here\n## Select a VACE model of the same model type you run in your regular Wan generation workflow.\n- *The key to success and no OOM is to configure this workflow as close to your regular Wan workflow as possible.*\n## If you need GGUF models, replace these nodes with your favorite GGUF loaders. \n"
+      ],
+      "color": "#233",
+      "bgcolor": "#355"
+    },
+    {
+      "id": 5,
+      "type": "CLIPTextEncode",
+      "pos": [
+        -4200,
+        1850
+      ],
+      "size": [
+        225,
+        116
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 6
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            5
+          ]
+        }
+      ],
+      "title": "CLIP Text Encode",
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode",
+        "cnr_id": "comfy-core",
+        "ver": "0.7.0"
+      },
+      "widgets_values": [
+        ""
+      ],
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 50,
+      "type": "MarkdownNote",
+      "pos": [
+        -4250,
+        1660
+      ],
+      "size": [
+        360,
+        146.39999389648438
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "Prompts",
+      "properties": {},
+      "widgets_values": [
+        "## Prompts are optional and usually unnecessary.  \nAnd of course the negative prompt is ineffective at CFG=1, without NAG."
+      ],
+      "color": "#233",
+      "bgcolor": "#355"
+    },
+    {
+      "id": 12,
+      "type": "UNETLoader",
+      "pos": [
+        -3720,
+        1650
+      ],
+      "size": [
+        390,
+        108
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "showAdvanced": false,
       "inputs": [],
       "outputs": [
         {
@@ -375,14 +468,14 @@
       "type": "UNETLoader",
       "pos": [
         -3720,
-        1810
+        1800
       ],
       "size": [
         390,
-        82
+        108
       ],
       "flags": {},
-      "order": 2,
+      "order": 4,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -411,16 +504,16 @@
       "type": "CLIPLoader",
       "pos": [
         -3720,
-        1950
+        1960
       ],
       "size": [
         390,
-        106
+        140
       ],
       "flags": {
         "collapsed": false
       },
-      "order": 3,
+      "order": 5,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -447,68 +540,24 @@
       "bgcolor": "#593930"
     },
     {
-      "id": 16,
-      "type": "VAEDecode",
-      "pos": [
-        -3620,
-        3360
-      ],
-      "size": [
-        140,
-        46
-      ],
-      "flags": {},
-      "order": 25,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "samples",
-          "type": "LATENT",
-          "link": 64
-        },
-        {
-          "name": "vae",
-          "type": "VAE",
-          "link": 28
-        }
-      ],
-      "outputs": [
-        {
-          "name": "IMAGE",
-          "type": "IMAGE",
-          "links": [
-            117
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "VAEDecode",
-        "cnr_id": "comfy-core",
-        "ver": "0.7.0"
-      },
-      "widgets_values": [],
-      "color": "#432",
-      "bgcolor": "#653"
-    },
-    {
       "id": 31,
       "type": "CreateVideo",
       "pos": [
-        -3120,
+        -3070,
         3350
       ],
       "size": [
-        210,
-        78
+        225,
+        104
       ],
       "flags": {},
-      "order": 27,
+      "order": 21,
       "mode": 0,
       "inputs": [
         {
           "name": "images",
           "type": "IMAGE",
-          "link": 115
+          "link": 121
         },
         {
           "name": "audio",
@@ -549,15 +598,15 @@
       "id": 28,
       "type": "GetVideoComponents",
       "pos": [
-        -3740,
-        2460
+        -3760,
+        2440
       ],
       "size": [
-        193.9370330810547,
-        66
+        225,
+        96
       ],
       "flags": {},
-      "order": 20,
+      "order": 14,
       "mode": 0,
       "inputs": [
         {
@@ -600,15 +649,15 @@
       "id": 15,
       "type": "LoraLoaderModelOnly",
       "pos": [
-        -2890,
-        1830
+        -3180,
+        1800
       ],
       "size": [
         460,
-        90
+        112
       ],
       "flags": {},
-      "order": 17,
+      "order": 11,
       "mode": 0,
       "inputs": [
         {
@@ -639,46 +688,115 @@
       "bgcolor": "#593930"
     },
     {
-      "id": 57,
-      "type": "ImageBatch",
+      "id": 14,
+      "type": "LoraLoaderModelOnly",
       "pos": [
-        -3380,
-        3360
+        -3180,
+        1650
       ],
       "size": [
-        160,
-        50
+        460,
+        112
       ],
       "flags": {},
-      "order": 26,
+      "order": 10,
       "mode": 0,
       "inputs": [
         {
-          "name": "image1",
-          "type": "IMAGE",
-          "link": 116
-        },
-        {
-          "name": "image2",
-          "type": "IMAGE",
-          "link": 117
+          "name": "model",
+          "type": "MODEL",
+          "link": 23
         }
       ],
       "outputs": [
         {
-          "name": "IMAGE",
-          "type": "IMAGE",
+          "name": "MODEL",
+          "type": "MODEL",
           "links": [
-            115
+            59
           ]
         }
       ],
       "properties": {
-        "Node name for S&R": "ImageBatch",
+        "Node name for S&R": "LoraLoaderModelOnly",
         "cnr_id": "comfy-core",
         "ver": "0.7.0"
       },
-      "widgets_values": [],
+      "widgets_values": [
+        "Wan 2.2\\T2V\\wan2.2_t2v_A14b_high_noise_lora_rank64_lightx2v_4step_1217.safetensors",
+        1
+      ],
+      "color": "#332922",
+      "bgcolor": "#593930"
+    },
+    {
+      "id": 35,
+      "type": "LoadVideo",
+      "pos": [
+        -4290,
+        2280
+      ],
+      "size": [
+        470,
+        374.25
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": [
+            77
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadVideo",
+        "cnr_id": "comfy-core",
+        "ver": "0.7.0"
+      },
+      "widgets_values": [
+        "video1-labelled_00001.mp4",
+        "image"
+      ],
+      "color": "#323",
+      "bgcolor": "#535"
+    },
+    {
+      "id": 30,
+      "type": "SaveVideo",
+      "pos": [
+        -2780,
+        3340
+      ],
+      "size": [
+        225,
+        480
+      ],
+      "flags": {},
+      "order": 22,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 69
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveVideo",
+        "cnr_id": "comfy-core",
+        "ver": "0.7.0"
+      },
+      "widgets_values": [
+        "VACE_extend",
+        "auto",
+        "auto"
+      ],
       "color": "#432",
       "bgcolor": "#653"
     },
@@ -686,15 +804,15 @@
       "id": 64,
       "type": "WanVACEExtend",
       "pos": [
-        -3510,
-        2460
+        -3480,
+        2480
       ],
       "size": [
-        210,
-        246
+        225,
+        336
       ],
       "flags": {},
-      "order": 21,
+      "order": 15,
       "mode": 0,
       "inputs": [
         {
@@ -743,7 +861,7 @@
           "name": "start_images",
           "type": "IMAGE",
           "links": [
-            116
+            122
           ]
         },
         {
@@ -769,64 +887,116 @@
       "bgcolor": "#353"
     },
     {
-      "id": 5,
-      "type": "CLIPTextEncode",
+      "id": 16,
+      "type": "VAEDecode",
       "pos": [
-        -4290,
-        1910
+        -3700,
+        3390
       ],
       "size": [
-        210,
-        88
+        225,
+        72
       ],
-      "flags": {
-        "collapsed": false
-      },
-      "order": 18,
+      "flags": {},
+      "order": 19,
       "mode": 0,
       "inputs": [
         {
-          "name": "clip",
-          "type": "CLIP",
-          "link": 6
+          "name": "samples",
+          "type": "LATENT",
+          "link": 64
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 28
         }
       ],
       "outputs": [
         {
-          "name": "CONDITIONING",
-          "type": "CONDITIONING",
+          "name": "IMAGE",
+          "type": "IMAGE",
           "links": [
-            5
+            120
           ]
         }
       ],
-      "title": "CLIP Text Encode",
       "properties": {
-        "Node name for S&R": "CLIPTextEncode",
+        "Node name for S&R": "VAEDecode",
         "cnr_id": "comfy-core",
         "ver": "0.7.0"
       },
-      "widgets_values": [
-        ""
-      ],
-      "color": "#232",
-      "bgcolor": "#353"
+      "widgets_values": [],
+      "color": "#432",
+      "bgcolor": "#653"
     },
     {
       "id": 67,
-      "type": "MarkdownNote",
+      "type": "BatchImagesNode",
       "pos": [
-        -4920,
-        1600
+        -3380,
+        3370
       ],
       "size": [
-        460,
-        420
+        225,
+        96
+      ],
+      "flags": {},
+      "order": 20,
+      "mode": 0,
+      "inputs": [
+        {
+          "label": "image0",
+          "name": "images.image0",
+          "type": "IMAGE",
+          "link": 122
+        },
+        {
+          "label": "image1",
+          "name": "images.image1",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 120
+        },
+        {
+          "label": "image2",
+          "name": "images.image2",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            121
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "BatchImagesNode"
+      },
+      "widgets_values": [],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 38,
+      "type": "MarkdownNote",
+      "pos": [
+        -4980,
+        1580
+      ],
+      "size": [
+        620,
+        627.4000244140625
       ],
       "flags": {
         "collapsed": false
       },
-      "order": 4,
+      "order": 7,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -839,330 +1009,25 @@
       "bgcolor": "#653"
     },
     {
-      "id": 70,
+      "id": 36,
       "type": "MarkdownNote",
       "pos": [
-        -5360,
-        2080
+        -4980,
+        2310
       ],
       "size": [
-        410,
-        590
-      ],
-      "flags": {},
-      "order": 5,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "title": "🚨Troubleshooting🚨",
-      "properties": {},
-      "widgets_values": [
-        "# Troubleshooting\n\n- **The size of tensor a must match the size of tensor b at non-singleton dimension 1** - Check that both dimensions of your input video are divisible by 16 and change this if they're not. Fun fact: 1080 is not divisible by 16!\n\n- **Regarding Framerate** - The Wan models are trained at 16 fps, so if your input video is at some higher rate, you may get sub-optimal results. At the very least, you'll need to increase the number of context and replace frames by whatever factor your framerate is greater than 16 fps in order to achieve the same effect with VACE. I suggest forcing your input down to 16 fps for processing with this workflow, then re-interpolating back up to your desired framerate.\n\n- **Brightness/color shift** - VACE can sometimes affect the brightness or saturation of the clips it generates. I don't know how to avoid this tendency, I think it's baked into the model, unfortunately.\n  - My other VACE clip joiner workflow ([Github](https://github.com/stuttlepress/ComfyUI-Wan-VACE-Video-Joiner) | [CivitAI](https://civitai.com/models/2024299)) offers some options (crossfade, color matching) to reduce these artifacts.\n  - Disabling lightx2v speed loras can help, as can making sure you use the exact same lora(s) and strength in this workflow that you used when generating your clips. \n  - The most consistent mitigation I have found is to interpolate framerate up to 30 or 60 fps after using this workflow. The interpolation decreases how perceptible the color shift is. The shift is still there, but it's spread out over 60 frames instead over 16, so it doesn't look like a sudden change to our eyes any more. It's not perfect, but it gets you about 80% of the way there.\n\n- **Nodes 2.0** - The ComfyUI Nodes 2.0 renderer is an incomplete beta feature. It currently breaks a lot of workflows and custom nodes. I have not tested this workflow under Nodes 2.0, and I won't until Nodes 2.0 is a non-beta, fully implemented and unavoidable ComfyUI feature.\n\n- If you can't make the workflow work, update ComfyUI and try again. If you're not willing to update ComfyUI, I can't help you. We have to be working from the same baseline.\n"
-      ],
-      "color": "#322",
-      "bgcolor": "#533"
-    },
-    {
-      "id": 35,
-      "type": "LoadVideo",
-      "pos": [
-        -4380,
-        2470
-      ],
-      "size": [
-        534.8333358764648,
-        410
-      ],
-      "flags": {},
-      "order": 6,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "VIDEO",
-          "type": "VIDEO",
-          "links": [
-            77
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "LoadVideo",
-        "cnr_id": "comfy-core",
-        "ver": "0.7.0"
-      },
-      "widgets_values": [
-        "video1-labelled_00001.mp4",
-        "image"
-      ],
-      "color": "#323",
-      "bgcolor": "#535"
-    },
-    {
-      "id": 66,
-      "type": "MarkdownNote",
-      "pos": [
-        -4310,
-        1690
-      ],
-      "size": [
-        250,
-        170
-      ],
-      "flags": {},
-      "order": 7,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "title": "Prompts 👇",
-      "properties": {},
-      "widgets_values": [
-        "## Prompts are optional and often unnecessary.  \nWe VACE operates more from the motion cues in the context frames than from the prompt.  \nAnd of course the negative prompt is ineffective at CFG=1 without NAG."
-      ],
-      "color": "#233",
-      "bgcolor": "#355"
-    },
-    {
-      "id": 71,
-      "type": "MarkdownNote",
-      "pos": [
-        -4320,
-        2280
-      ],
-      "size": [
-        370,
-        140
+        620,
+        960
       ],
       "flags": {},
       "order": 8,
       "mode": 0,
       "inputs": [],
       "outputs": [],
-      "title": "👇 Load Video",
-      "properties": {},
-      "widgets_values": [
-        "Drag and drop your input video onto the **Load Video** node above, or use the *choose file to upload* UI to select it.\n\nThe node will reject videos that are in an incompatible format or are too large."
-      ],
-      "color": "#233",
-      "bgcolor": "#355"
-    },
-    {
-      "id": 14,
-      "type": "LoraLoaderModelOnly",
-      "pos": [
-        -2890,
-        1670
-      ],
-      "size": [
-        460,
-        100
-      ],
-      "flags": {},
-      "order": 16,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "model",
-          "type": "MODEL",
-          "link": 23
-        }
-      ],
-      "outputs": [
-        {
-          "name": "MODEL",
-          "type": "MODEL",
-          "links": [
-            59
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "LoraLoaderModelOnly",
-        "cnr_id": "comfy-core",
-        "ver": "0.7.0"
-      },
-      "widgets_values": [
-        "Wan 2.2\\T2V\\wan2.2_t2v_A14b_high_noise_lora_rank64_lightx2v_4step_1217.safetensors",
-        1
-      ],
-      "color": "#332922",
-      "bgcolor": "#593930"
-    },
-    {
-      "id": 72,
-      "type": "MarkdownNote",
-      "pos": [
-        -3310,
-        1680
-      ],
-      "size": [
-        370,
-        230
-      ],
-      "flags": {},
-      "order": 9,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "title": "👈 Models",
-      "properties": {},
-      "widgets_values": [
-        "## Select your preferred Wan VACE, CLIP and VAE models\n> - Select a VACE model of the same model type and quantization that you run in your regular Wan generation workflow. If you usually run FP8 for video generation, choose FP8 VACE models. If you usually use Q4 GGUF, use Q4 GGUF VACE models.\n> - *The key to success and no OOM is to configure this workflow as close to your regular Wan workflow as possible.*\n> - **If you need GGUF models, replace these nodes with your favorite GGUF loaders.**\n"
-      ],
-      "color": "#233",
-      "bgcolor": "#355"
-    },
-    {
-      "id": 73,
-      "type": "MarkdownNote",
-      "pos": [
-        -2840,
-        2000
-      ],
-      "size": [
-        380,
-        190
-      ],
-      "flags": {},
-      "order": 10,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "title": "👆Speedup Loras",
-      "properties": {},
-      "widgets_values": [
-        "## Select Lightning/Lightx2v Loras\n> - Loras are enabled by default because that seems to be how most people do Wan generation.\n> - For best results, use the same lora models and lora strength that your input clips were generated with.\n> - Reducing lora strength or disabling the loras completely can reduce color/brightness artifacts.\n> - If you disable loras, don't forget to adjust sampler settings appropriately. See the **Samplers** note below."
-      ],
-      "color": "#233",
-      "bgcolor": "#355"
-    },
-    {
-      "id": 74,
-      "type": "MarkdownNote",
-      "pos": [
-        -3590,
-        2750
-      ],
-      "size": [
-        380,
-        310
-      ],
-      "flags": {},
-      "order": 11,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "title": "VACE Parameters 👆",
-      "properties": {},
-      "widgets_values": [
-        "**The defaults, `context_frames=8` and `replace_frames=8` usually work well for most 16 fps videos.**\n> - **extend_from_idx**: New frames will be generated from this point in the input video.\n> - **context_frames**: The number of reference frames immediately preceding `extend_from_idx` to use for generation context.\n> - **new_frames**: the number of brand new frames to generate.\n\nThis workflow will generate `context_frames + new_frames` frames at `extend_from_idx`.  \nOriginal frames that follow `extend_from_idx` will be discarded and replaced by `new_frames`.  \n `context_frames` mirror existing frames from the input video."
-      ],
-      "color": "#233",
-      "bgcolor": "#355"
-    },
-    {
-      "id": 75,
-      "type": "MarkdownNote",
-      "pos": [
-        -2380,
-        2390
-      ],
-      "size": [
-        310,
-        290
-      ],
-      "flags": {},
-      "order": 12,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "title": "👈 Samplers",
-      "properties": {},
-      "widgets_values": [
-        "## Sampler settings\n\nInference parameters aren't any different from normal Wan 2.2 generation. If you have a favorite sampler/scheduler combination for Wan generation, it will probably work fine here.\n\n> The default values assume the speedup lora is active.\n> - `steps: 4`\n> - `cfg: 1.0`\n\n> Without loras, use higher values.\n> - `steps: 20`\n> - `cfg: 3.5`\n\n\n"
-      ],
-      "color": "#233",
-      "bgcolor": "#355"
-    },
-    {
-      "id": 30,
-      "type": "SaveVideo",
-      "pos": [
-        -2780,
-        3340
-      ],
-      "size": [
-        210,
-        471.3333333333333
-      ],
-      "flags": {},
-      "order": 28,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "video",
-          "type": "VIDEO",
-          "link": 69
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "Node name for S&R": "SaveVideo",
-        "cnr_id": "comfy-core",
-        "ver": "0.7.0"
-      },
-      "widgets_values": [
-        "VACE extend",
-        "auto",
-        "auto"
-      ],
-      "color": "#432",
-      "bgcolor": "#653"
-    },
-    {
-      "id": 76,
-      "type": "MarkdownNote",
-      "pos": [
-        -3040,
-        3490
-      ],
-      "size": [
-        230,
-        88
-      ],
-      "flags": {},
-      "order": 13,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "title": "Output File 👉",
-      "properties": {},
-      "widgets_values": [
-        "The combined video will be saved as `ComfyUI\\output\\VACE extend_00001.mp4`"
-      ],
-      "color": "#233",
-      "bgcolor": "#355"
-    },
-    {
-      "id": 36,
-      "type": "MarkdownNote",
-      "pos": [
-        -4920,
-        2080
-      ],
-      "size": [
-        460,
-        610
-      ],
-      "flags": {},
-      "order": 14,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
       "title": "README",
       "properties": {},
       "widgets_values": [
-        "[Github](https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep) | [CivitAI](https://civitai.com/user/__Bob__/models)  \n***\n*You're free to do whatever you want with this workflow, but it makes me feel good when you give me credit. Redistributing it without attribution is kind of lame.*\n\n***\n\n# How to Use This Workflow\n\nMost of this information can also be found in the cyan notes scattered thoughout the workflow.\n\n## 1. Install the [*ComfyUI-Wan-VACE-Prep*](https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep) node pack.\n\nIt's a tiny package with no dependencies, so it is very unlikely to break your system, if you worry about such things.\n\nIf you don't already have the node, you can open the Manager and install it either from the *Missing Nodes* section, or search for **Wan VACE Prep**.\n\n\n## 2. Select models appropriate for your system\n- Select your VACE models in the *Load* group. \n- Select or disable speedup loras.\n\n\n## 3. Load your input video  \nDrag and drop your input video onto the **Load Video** node, or use the *choose file to upload* UI to select it.\n\n\n## 4. Run the workflow\nThe extended video will be placed in your ComfyUI *output* directory, named something like `VACE_extend_0001.mp4`\n"
+        "[Github](https://github.com/stuttlepress) | [CivitAI](https://civitai.com/user/__Bob__) \n\n*You're free to do whatever you want with this workflow, but it makes me feel good when you give me credit. Redistributing it without attribution is kind of lame.*\n\n* * *\n\n# How to Use This Workflow\n\n## 1. Install Requirements\n> ### Wan VACE Prep\n> - [Repository](https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep)\n> - v1.0.19 or higher required\n> - Search *Wan VACE Prep* in ComfyUI Manager\n> - Provides the **🪐 Video Outpaint** node. \n\n\n## 2. Select models appropriate for your system\n- **Select your VACE models** in the *Load* group. Choose models that match what you usually run in your normal Wan workflow. If you usually run FP8 for video generation, choose FP8 VACE models. If you usually use Q4 GGUF, use Q4 GGUF VACE models.\n- **Select or disable lightx2v loras.** Using the same loras and strength that your input clips were generated with may reduce VACE brightness/color artifacts.\n\n## 3. Load your input video\n\n  -  **3.5 (Optional) Configure the video transition**.  \nSet the *extend_from_idx*, *context_frames*, and *new_frames* parameters on the **Wan VACE Extend** node. The defaults work well for 81 frame 16fps clips, but feel free to experiment. Tooltips and the [README file](https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep/blob/main/README.md#wan-vace-extend) give a little more information about how the parameters work.\n\n## 4. Run the workflow\nThe joined video will be placed in your ComfyUI *output* directory, named something like `VACE_extend_0001.mp4`\n"
       ],
       "color": "#146e47",
       "bgcolor": "#005a33"
@@ -1171,22 +1036,22 @@
       "id": 68,
       "type": "MarkdownNote",
       "pos": [
-        -5270,
-        1630
+        -5330,
+        1730
       ],
       "size": [
-        320,
-        130
+        310,
+        280
       ],
       "flags": {},
-      "order": 15,
+      "order": 9,
       "mode": 0,
       "inputs": [],
       "outputs": [],
       "title": "Changelog",
       "properties": {},
       "widgets_values": [
-        "[Github](https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep) | [CivitAI](https://civitai.com/user/__Bob__/models)  \n\n\n- **v1.0.1** Minor documentation update.\n- **v1.0.0** Initial release. "
+        "[Github](https://github.com/stuttlepress) | [CivitAI](https://civitai.com/user/__Bob__) \n\n- **v1.0.1** Maintenance update\n  - replace deprecated `batch images` node\n  - documentation fix\n\n* **v1.0.0** Initial release. \n"
       ],
       "color": "#2a363b",
       "bgcolor": "#3f5159"
@@ -1402,27 +1267,27 @@
       "INT"
     ],
     [
-      115,
-      57,
+      120,
+      16,
+      0,
+      67,
+      1,
+      "IMAGE"
+    ],
+    [
+      121,
+      67,
       0,
       31,
       0,
       "IMAGE"
     ],
     [
-      116,
+      122,
       64,
       5,
-      57,
+      67,
       0,
-      "IMAGE"
-    ],
-    [
-      117,
-      16,
-      0,
-      57,
-      1,
       "IMAGE"
     ]
   ],
@@ -1437,7 +1302,6 @@
         590
       ],
       "color": "#b58b2a",
-      "font_size": 24,
       "flags": {}
     },
     {
@@ -1450,7 +1314,6 @@
         940
       ],
       "color": "#88A",
-      "font_size": 24,
       "flags": {}
     },
     {
@@ -1463,38 +1326,36 @@
         720
       ],
       "color": "#3f789e",
-      "font_size": 24,
       "flags": {}
     },
     {
       "id": 4,
       "title": "Input",
       "bounding": [
-        -4410,
+        -4320,
         1560,
-        620,
+        530,
         1670
       ],
       "color": "#8AA",
-      "font_size": 24,
       "flags": {}
     }
   ],
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.7513148009015777,
+      "scale": 1.1000000000000005,
       "offset": [
-        5265.2778134936725,
-        -1512.45638562136
+        5560.494750363621,
+        -1569.9402086432187
       ]
     },
     "workflowRendererVersion": "LG",
-    "frontendVersion": "1.39.19",
+    "frontendVersion": "1.45.15",
     "VHS_latentpreview": true,
     "VHS_latentpreviewrate": 0,
     "VHS_MetadataImage": false,
-    "VHS_KeepIntermediate": true
+    "VHS_KeepIntermediate": false
   },
   "version": 0.4
 }
