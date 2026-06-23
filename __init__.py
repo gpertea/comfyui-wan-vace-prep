@@ -9,6 +9,8 @@ from .vace_batch_context import WanVACEBatchContext
 from .frame_number_overlay import FrameNumberOverlay
 from .vace_outpaint import VACEOutpaint
 from .vace_inpaint import WanVACEInpaint
+from .wan_first_last_middle_frame import WanFirstLastMiddleFrameToVideo
+from .vace_first_middle_last import WanVACEFirstMiddleLast
 
 NODE_CLASS_MAPPINGS = {
     "WanVACEPrep": WanVACEPrep,
@@ -19,6 +21,8 @@ NODE_CLASS_MAPPINGS = {
     "FrameNumberOverlay": FrameNumberOverlay,
     "VACEOutpaint": VACEOutpaint,
     "WanVACEInpaint": WanVACEInpaint,
+    "WanFirstLastMiddleFrameToVideo": WanFirstLastMiddleFrameToVideo,
+    "WanVACEFirstMiddleLast": WanVACEFirstMiddleLast,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -30,6 +34,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "FrameNumberOverlay": "🪐 Frame Number Overlay",
     "VACEOutpaint": "🪐 Video Outpaint",
     "WanVACEInpaint": "🪐 Wan VACE Inpaint (Experimental)",
+    "WanFirstLastMiddleFrameToVideo": "Wan First/Last/Middle Frame to Video",
+    "WanVACEFirstMiddleLast": "🪐 VACE First/Middle/Last",
 }
 
 WEB_DIRECTORY = "./web"
