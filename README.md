@@ -218,8 +218,6 @@ Stuff here is new and has not been thoroughly tested. Inputs, outputs, and behav
 
 ### Wan VACE Inpaint
 
-> **Experimental** - new and not well tested. Behavior and interface may change.
-
 Prepares control video and mask for inpainting. Connect the output to `WanVaceToVideo.control_video` / `control_masks`; use `WanVaceToVideo.reference_image` separately if you need a reference frame.
 
 **Parameters:**
@@ -237,6 +235,90 @@ Prepares control video and mask for inpainting. Connect the output to `WanVaceTo
 | control_mask | VACE control mask input. White (1) where inpainting should occur, black (0) over preserved content. |
 | width, height | Video dimensions (must be divisible by 16) |
 | length | Frame count (matches input video) |
+
+---
+
+### Frame Number Overlay
+
+Burns a frame number label into every frame of an IMAGE batch as a text overlay. Useful for identifying frames in long sequences or debugging video workflows.
+
+**Parameters:**
+
+| Parameter | Default | Description |
+|-|-|-|
+| images | | Input image batch (IMAGE) |
+| font_size | 32 | Size of the overlay text (8–256) |
+| start_index | 0 | Starting frame number for the first frame in the batch |
+| position | top-left | Placement: top-left, top-right, bottom-left, or bottom-right |
+| padding | 10 | Distance from edge in pixels |
+| font_color | white | Text color (any CSS color name or hex) |
+| prefix | "" | Optional text before the frame number |
+| suffix | "" | Optional text after the frame number |
+
+**Outputs:**
+
+| Output | Description |
+|-|-|
+| images | Image batch with frame numbers burned in |
+
+---
+
+### Wan First/Last/Middle Frame to Video
+
+Based on native ComfyUI WanFirstLastFrameToVideo, generates conditioning latents from optional start, end, and middle reference images using a VAE and clip vision model. 
+
+**Parameters:**
+
+| Parameter | Default | Description |
+|-|-|-|
+| positive | | Positive conditioning |
+| negative | | Negative conditioning |
+| vae | | VAE for latent encoding/decoding |
+| width | 832 | Output width (multiple of 16) |
+| height | 480 | Output height (multiple of 16) |
+| length | 81 | Frame count (4n+1 pattern) |
+| batch_size | 1 | Number of parallel generations |
+| start_image | *(optional)* | Reference image for the beginning frames |
+| end_image | *(optional)* | Reference image for the ending frames |
+| middle_image | *(optional)* | Reference image for middle frames |
+| middle_frame | 0.5 | Position of middle reference as fraction of total length |
+| clip_vision_start_image | *(optional)* | CLIP vision output for start image guidance |
+| clip_vision_end_image | *(optional)* | CLIP vision output for end image guidance |
+| clip_vision_middle_image | *(optional)* | CLIP vision output for middle image guidance |
+
+**Outputs:**
+
+| Output | Description |
+|-|-|
+| positive | Positive conditioning with frame-level guidance |
+| negative | Negative conditioning |
+| latent | Generated latent video tensor |
+
+---
+
+### VACE First/Middle/Last
+
+Builds a VACE control video and mask from optional first, middle, and last frame batches. Known frames are placed at their positions with mask=0; remaining frames become gray placeholders (mask=1) for Wan to generate. I have found VACE FLF2V and FMLF2V to be far less effective than conditioning-based versions. VACE-generated motion tends to be very linear, unnatural when applied to people, except for very short sequences.
+
+**Parameters:**
+
+| Parameter | Default | Description |
+|-|-|-|
+| width | 832 | Output width (snapped to 16px grid if needed) |
+| height | 480 | Output height (snapped to 16px grid if needed) |
+| length | 81 | Total frame count (must follow 4n+1 pattern; snapped if not) |
+| middle_position | 0.5 | Where middle frames are centered as a fraction of total length |
+| first | *(optional)* | Reference frames for the beginning |
+| middle | *(optional)* | Reference frames for the middle region |
+| last | *(optional)* | Reference frames for the ending |
+
+**Outputs:**
+
+| Output | Description |
+|-|-|
+| control_video | VACE control video (known frames + gray placeholders) |
+| control_mask | VACE control mask (0 over known regions, 1 over generation zones) |
+| width, height, length | Final snapped dimensions and frame count |
 
 ---
 
