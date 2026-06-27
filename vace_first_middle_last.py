@@ -42,6 +42,7 @@ class WanVACEFirstMiddleLast:
         "frame batches. Known frames are placed at their positions with mask=0; "
         "remaining frames are gray placeholders with mask=1 for generation."
     )
+    EXPERIMENTAL = True
 
     def run(self, width, height, length, middle_position, first=None, middle=None, last=None):
         snapped_width = (width // 16) * 16

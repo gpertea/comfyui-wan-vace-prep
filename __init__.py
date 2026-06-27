@@ -34,7 +34,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "FrameNumberOverlay": "🪐 Frame Number Overlay",
     "VACEOutpaint": "🪐 Video Outpaint",
     "WanVACEInpaint": "🪐 Wan VACE Inpaint (Experimental)",
-    "WanFirstLastMiddleFrameToVideo": "Wan First/Last/Middle Frame to Video",
+    "WanFirstLastMiddleFrameToVideo": "🪐 Wan First/Last/Middle Frame to Video",
     "WanVACEFirstMiddleLast": "🪐 VACE First/Middle/Last",
 }
 

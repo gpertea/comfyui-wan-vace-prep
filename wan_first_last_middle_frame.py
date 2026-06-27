@@ -33,6 +33,7 @@ class WanFirstLastMiddleFrameToVideo:
     RETURN_NAMES = ("positive", "negative", "latent")
     FUNCTION = "execute"
     CATEGORY = "wan_vace_prep"
+    EXPERIMENTAL = True
 
     def execute(self, positive, negative, vae, width, height, length, batch_size,
                 start_image=None, end_image=None, middle_image=None, middle_frame=0.5,
