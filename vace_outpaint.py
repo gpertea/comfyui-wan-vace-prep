@@ -46,8 +46,8 @@ class VACEOutpaint(io.ComfyNode):
     def define_schema(cls):
         return io.Schema(
             node_id="VACEOutpaint",
-            display_name="VACE Outpaint",
-            category="Wan VACE Prep/VACE",
+            display_name="🪐 Video Outpaint",
+            category="Wan VACE Prep/Video",
             description=(
                 "Interactive outpaint layout: position a crop/output window over source frames "
                 "to generate a VACE control video and binary outpaint mask. "

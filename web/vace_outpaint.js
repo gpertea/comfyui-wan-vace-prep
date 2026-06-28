@@ -1021,7 +1021,7 @@ app.registerExtension({
                     // nodes which start offscreen become fully functional once visible.
                     wireInteractions(st, dom, widgets, node, nodeId);
                     render(st, dom);
-                    setupResizeObserver(st, dom, widgets);
+                    const ro = setupResizeObserver(st, dom, widgets);
 
                     // Re-display frames after every successful workflow run.
                     // execution_success fires once the whole graph has finished,
@@ -1031,7 +1031,10 @@ app.registerExtension({
                         if (data) applyFrameData(data, true);
                     };
                     api.addEventListener("execution_success", onExecutionSuccess);
-                    node._outpaintCleanup = () => api.removeEventListener("execution_success", onExecutionSuccess);
+                    node._outpaintCleanup = () => {
+                        api.removeEventListener("execution_success", onExecutionSuccess);
+                        ro.disconnect();
+                    };
 
                     // Also try to recover frames cached from a prior server session.
                     fetchInfo(nodeId).then(data => {

@@ -35,8 +35,6 @@ Prepares a video for outpainting using an interactive canvas widget. Position an
 
 Renamed from *VACE Outpaint*.
 
-> **Note:** This node is still on the legacy V1 API and is temporarily unregistered while it is migrated to Nodes 2.0 (V3), so it will not appear in the node menu yet. See [Technical Notes](#technical-notes).
-
 ![Video Outpaint Node](assets/vace-outpaint.png)
 
 
@@ -341,7 +339,13 @@ Builds a VACE control video and mask from optional first, middle, and last frame
 
 **Class names vs. display names.** Some internal class names (e.g., `WanVACEPrep`) don't match the current display names (e.g., "VACE Join"). This is intentional: renaming classes would break existing workflows that reference them. Once ComfyUI's node renaming API is stable, a refactoring pass will align them.
 
-**Nodes 2.0 / V3 API.** All nodes except the Video Outpaint node have been migrated to ComfyUI's V3 (Nodes 2.0) node API. The Video Outpaint node is still on the legacy V1 API and is not registered for the moment; it will be migrated soon. The interactive outpaint canvas widget has not yet been verified under the Nodes 2.0 (Vue) renderer.
+**Nodes 2.0 / V3 API Reverse-engineered behavior (may be fragile).** Parts of the V3 migration rely on ComfyUI behavior that is undocumented in the public API, so they had to be reverse-engineered from the source and the minified frontend bundle. These are the most likely things to break across ComfyUI releases:
+
+- **Video Outpaint canvas sizing** (`web/vace_outpaint.js`). The DOM-widget sizing contract (`getMinHeight` feeding `DOMWidgetImpl.computeLayoutSize`, framework-driven height, flex-column fill) is not documented. There is also no supported way to set a minimum node *width* for a DOM widget, so the controls are contained with CSS instead of a hard floor.
+- **Custom socket types.** The `io.Custom("VHS_BatchManager")` input on Load Videos From Folder (for the optional VideoHelperSuite Meta Batch Manager) uses an undocumented pattern.
+- **List-mode inputs.** VACE Batch Context relies on the `is_input_list` calling convention (every input delivered as a list), whose semantics are not spelled out in the V3 docs.
+
+ComfyUI ships essentially no reference for the V3 `io.*` type catalog or these widget/execution contracts; the only authoritative source is the (underscore-private) `comfy_api/latest/_io.py` and the compiled frontend. The full running list of gaps that cost time during migration is in [`V3_DOC_GAPS.md`](V3_DOC_GAPS.md).
 
 ---
 
