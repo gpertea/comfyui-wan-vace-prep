@@ -180,10 +180,10 @@ function mkBtn(label, css) {
 
 function buildUI() {
     // ── Root container ──
-    const root = mkEl("div", "width:100%;box-sizing:border-box;padding:6px 8px 10px;font-family:system-ui,sans-serif;font-size:12px;color:#ccc;");
+    const root = mkEl("div", "width:100%;box-sizing:border-box;padding:6px 8px 10px;font-family:system-ui,sans-serif;font-size:12px;color:#ccc;display:flex;flex-direction:column;overflow:hidden;");
 
     // ── Canvas area ──
-    const wrap = mkEl("div", `position:relative;min-height:${CANVAS_H}px;background:#181818;border:1px solid #3a3a3a;border-radius:6px;overflow:hidden;user-select:none;touch-action:none;cursor:default;`);
+    const wrap = mkEl("div", `position:relative;flex:1 1 auto;min-height:${CANVAS_H}px;background:#181818;border:1px solid #3a3a3a;border-radius:6px;overflow:hidden;user-select:none;touch-action:none;cursor:default;`);
 
     // Source frame (holds actual frame image)
     const sfEl = mkEl("div", "position:absolute;background:#222;overflow:hidden;border:1px solid #333;");
@@ -261,7 +261,7 @@ function buildUI() {
     wrap.appendChild(zoomIndicator);
 
     // ── Controls ──
-    const ctrl = mkEl("div", "display:flex;flex-direction:column;gap:5px;margin-top:7px;");
+    const ctrl = mkEl("div", "flex:0 0 auto;display:flex;flex-direction:column;gap:5px;margin-top:7px;");
 
     // ── Crop Size Row ──
     const cropSizeRow = mkEl("div", "display:flex;align-items:center;gap:5px;flex-wrap:wrap;");
@@ -300,7 +300,7 @@ function buildUI() {
     });
 
     // ── Snap Buttons (7, joined strip) ──
-    const snapRow = mkEl("div", "display:flex;align-items:center;gap:0;");
+    const snapRow = mkEl("div", "display:flex;align-items:center;gap:0;overflow-x:auto;");
     const snapLabel = mkEl("span", "font-size:10px;color:#999;margin-right:4px;");
     snapLabel.textContent = "snap:";
     const SNAP_DEFS = [
@@ -313,7 +313,7 @@ function buildUI() {
         const bl = isFirst ? "1px solid #444" : "none";
         const b = mkEl("button",
             `padding:2px 7px;font-size:10px;border:1px solid #444;border-left:${bl};` +
-            `border-radius:${radius};background:#2a2a2a;color:#bbb;cursor:pointer;white-space:nowrap;`
+            `border-radius:${radius};background:#2a2a2a;color:#bbb;cursor:pointer;white-space:nowrap;flex-shrink:0;`
         );
         b.textContent = label; b.dataset.snap = key;
         b.onmouseenter = () => { b.style.background = "#3a3a3a"; };
@@ -905,62 +905,32 @@ app.registerExtension({
             const st  = createState();
             const dom = buildUI();
 
+            const CTRL_H = 185; // scrubber + size row + presets + snap + out+mask row + gaps
+            const MIN_W   = 520;
+            const MIN_H   = CANVAS_H + CTRL_H;
+
+            // V3 sizing contract: the framework sizes the DOM widget element from the
+            // value returned by getMinHeight (via computeLayoutSize) and writes an explicit
+            // pixel height onto dom.root. dom.root is a flex column, so dom.wrap (flex:1)
+            // absorbs any height beyond the fixed-height controls, and the ResizeObserver
+            // on dom.wrap re-lays-out the canvas. We deliberately do NOT set dom.wrap's
+            // height or derive node height from the DOM: that bidirectional coupling is
+            // what caused runaway vertical growth on horizontal drag.
             const domWidget = node.addDOMWidget("vace_outpaint_canvas", "customvideo", dom.root, {
                 serialize: false,
                 hideOnZoom: false,
+                getMinHeight: () => MIN_H,
             });
 
-            const CTRL_H = 185; // scrubber + size row + presets + snap + out+mask row + gaps
-            const NODE_CHROME = 72; // ComfyUI title bar + slot padding overhead (V1)
-            const MIN_W = 520;
-            domWidget.computeSize = () => [440, CANVAS_H + CTRL_H];
-            node.setSize([Math.max(node.size[0], MIN_W), Math.max(node.size[1], CANVAS_H + CTRL_H + NODE_CHROME)]);
-            let _prevNodeX = node.pos[0];
+            node.resizable = true;
+            node.setSize([Math.max(node.size[0], MIN_W), Math.max(node.size[1], MIN_H)]);
 
-            // In V2, node size is derived from dom.root height, so onResize fires as
-            // feedback whenever we change dom.wrap. We break the loop by measuring the
-            // actual overhead (everything above dom.wrap in node height) from V2's first
-            // call, then using that to produce a zero-delta update.
-            const _isV2 = !!(app?.extensionManager);
-            let _overhead = _isV2 ? null : CTRL_H + NODE_CHROME; // V1: static; V2: measured
-            let _lastSetH = -1; // height most recently written to dom.wrap
-
-            node.onResize = function(size) {
-                if (size[0] < MIN_W) {
-                    if (this.pos[0] !== _prevNodeX) {
-                        // Left-edge drag: compensate pos so the right edge stays pinned.
-                        this.pos[0] += size[0] - MIN_W;
-                    }
-                    size[0] = MIN_W;
-                }
-                _prevNodeX = this.pos[0];
-
-                if (_overhead === null) {
-                    // V2 init: size[1] is DOM-derived, so this difference is the exact
-                    // overhead that yields a zero-change equilibrium. Return without
-                    // touching DOM so V2 has nothing new to react to.
-                    if (dom.wrap.offsetHeight > 0) {
-                        _overhead = size[1] - dom.wrap.offsetHeight;
-                    }
-                    return;
-                }
-
-                if (_isV2 && _lastSetH >= 0 && dom.wrap.offsetHeight === _lastSetH) {
-                    // V2 is feeding back after our last dom.wrap change.
-                    // Recalibrate in case V2's chrome value shifted post-init.
-                    const obs = size[1] - dom.wrap.offsetHeight;
-                    if (obs > _overhead) _overhead = obs;
-                }
-
-                const h = Math.max(CANVAS_H, size[1] - _overhead);
-                if (dom.wrap.offsetHeight === h) {
-                    _lastSetH = -1; // settled - next onResize is not our feedback
-                    return;
-                }
-                _lastSetH = h;
-                dom.wrap.style.height = h + "px";
-                // ResizeObserver on dom.wrap handles re-layout
-            };
+            // No hard width floor: Nodes 2.0 derives a DOM widget's min width from
+            // DOMWidgetImpl.computeLayoutSize(), which hardcodes minWidth:0, and exposes no
+            // option, CSS var, or honoured instance override to change it. Rather than
+            // reverse-engineer the compiled frontend, we let the node be draggable narrow and
+            // keep the controls from spilling past the node edge with CSS (dom.root clips; the
+            // control rows already wrap or scroll). The node still OPENS at MIN_W via setSize.
 
             // Place canvas widget first; hide all canvas-managed widgets from native UI.
             if (node.widgets) {

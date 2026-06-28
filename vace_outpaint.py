@@ -1,11 +1,12 @@
 import base64
-import io
+import io as _io
 
 import numpy as np
 import server
 import torch
 import torch.nn.functional as F
 from aiohttp import web
+from comfy_api.latest import io
 from PIL import Image
 
 _GRID = 16
@@ -35,54 +36,63 @@ def _tensor_to_jpeg(frame_tensor):
     """Convert a (H, W, 3) float32 0-1 tensor to JPEG bytes."""
     arr = (frame_tensor.cpu().numpy() * 255).clip(0, 255).astype(np.uint8)
     img = Image.fromarray(arr)
-    buf = io.BytesIO()
+    buf = _io.BytesIO()
     img.save(buf, format="JPEG", quality=85)
     return buf.getvalue()
 
 
-class VACEOutpaint:
+class VACEOutpaint(io.ComfyNode):
     @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "images": ("IMAGE", {
-                    "tooltip": "Source video frames as an IMAGE batch."
-                }),
-                "crop_state": ("STRING", {
-                    "default": "",
-                    "tooltip": "Canvas-managed crop state: 'x,y,w,h[,ow,oh]' in source pixels. Set by the interactive widget.",
-                }),
-                "mask_color": ("STRING", {
-                    "default": "wan",
-                    "tooltip": "Fill color preset for the outpainted region. Managed by the canvas widget.",
-                }),
-                "custom_color": ("STRING", {
-                    "default": "128,128,128",
-                    "tooltip": "Custom fill color when mask_color is 'custom'. Managed by the canvas widget.",
-                }),
-            },
-            "hidden": {
-                "unique_id": "UNIQUE_ID",
-            },
-        }
-
-    RETURN_TYPES = ("IMAGE", "MASK", "INT", "INT", "INT")
-    RETURN_NAMES = ("control_video", "control_mask", "width", "height", "length")
-    FUNCTION = "outpaint_prep"
-    OUTPUT_NODE = True
-    CATEGORY = "Wan VACE Prep/VACE"
-    DESCRIPTION = (
-        "Interactive outpaint layout: position a crop/output window over source frames "
-        "to generate a VACE control video and binary outpaint mask. "
-        "The output window may extend beyond the source frame on any side; "
-        "overhanging regions become the mask (white = outpaint, black = source content)."
-    )
+    def define_schema(cls):
+        return io.Schema(
+            node_id="VACEOutpaint",
+            display_name="VACE Outpaint",
+            category="Wan VACE Prep/VACE",
+            description=(
+                "Interactive outpaint layout: position a crop/output window over source frames "
+                "to generate a VACE control video and binary outpaint mask. "
+                "The output window may extend beyond the source frame on any side; "
+                "overhanging regions become the mask (white = outpaint, black = source content)."
+            ),
+            is_output_node=True,
+            inputs=[
+                io.Image.Input(
+                    "images",
+                    tooltip="Source video frames as an IMAGE batch.",
+                ),
+                io.String.Input(
+                    "crop_state",
+                    default="",
+                    tooltip="Canvas-managed crop state: 'x,y,w,h[,ow,oh]' in source pixels. Set by the interactive widget.",
+                ),
+                io.String.Input(
+                    "mask_color",
+                    default="wan",
+                    tooltip="Fill color preset for the outpainted region. Managed by the canvas widget.",
+                ),
+                io.String.Input(
+                    "custom_color",
+                    default="128,128,128",
+                    tooltip="Custom fill color when mask_color is 'custom'. Managed by the canvas widget.",
+                ),
+            ],
+            outputs=[
+                io.Image.Output("control_video"),
+                io.Mask.Output("control_mask"),
+                io.Int.Output("width"),
+                io.Int.Output("height"),
+                io.Int.Output("length"),
+            ],
+            hidden=[io.Hidden.unique_id],
+        )
 
     # ------------------------------------------------------------------
     # Main
     # ------------------------------------------------------------------
 
-    def outpaint_prep(self, images, crop_state, mask_color, custom_color, unique_id):
+    @classmethod
+    def execute(cls, images, crop_state, mask_color, custom_color) -> io.NodeOutput:
+        unique_id = cls.hidden.unique_id
         n, src_h, src_w, _ = images.shape
 
         if src_w < _MIN_DIM or src_h < _MIN_DIM:
@@ -245,7 +255,7 @@ class VACEOutpaint:
             f"pad T={pad_t} B={pad_b} L={pad_l} R={pad_r} | frames={n}"
         )
 
-        return (control_video, control_mask, eff_w, eff_h, n)
+        return io.NodeOutput(control_video, control_mask, eff_w, eff_h, n)
 
 
 

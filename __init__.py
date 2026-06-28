@@ -12,11 +12,10 @@ from .frame_number_overlay import FrameNumberOverlay
 from .vace_inpaint import WanVACEInpaint
 from .wan_first_middle_last_frame import WanFirstMiddleLastFrameToVideo
 from .vace_first_middle_last import WanVACEFirstMiddleLast
+from .vace_outpaint import VACEOutpaint
 
-# NOTE: vace_outpaint.py (VACEOutpaint) is still a V1 node and is intentionally
-# left unregistered for now. Once it is migrated to V3 it can be imported and
-# added to get_node_list() below. Node display names come from each node's
-# Schema.display_name, so no NODE_DISPLAY_NAME_MAPPINGS is needed here.
+# Node display names come from each node's Schema.display_name, so no
+# NODE_DISPLAY_NAME_MAPPINGS is needed here.
 
 
 class WanVacePrepExtension(ComfyExtension):
@@ -31,6 +30,7 @@ class WanVacePrepExtension(ComfyExtension):
             WanVACEInpaint,
             WanFirstMiddleLastFrameToVideo,
             WanVACEFirstMiddleLast,
+            VACEOutpaint,
         ]
 
 
