@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+from comfy_api.latest import io
 
 
 def _resize_frames(frames, width, height):
@@ -10,41 +11,41 @@ def _resize_frames(frames, width, height):
     return x.movedim(1, -1).to(frames.dtype)
 
 
-class WanVACEFirstMiddleLast:
+class WanVACEFirstMiddleLast(io.ComfyNode):
     @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "width": ("INT", {"default": 832, "min": 16, "max": 16384, "step": 16}),
-                "height": ("INT", {"default": 480, "min": 16, "max": 16384, "step": 16}),
-                "length": ("INT", {
-                    "default": 81, "min": 1, "max": 16384, "step": 4,
-                    "tooltip": "Total frame count. Must follow the 4n+1 pattern (1, 5, 9, ..., 81, ...)."
-                }),
-                "middle_position": ("FLOAT", {
-                    "default": 0.5, "min": 0.0, "max": 1.0, "step": 0.01,
-                    "tooltip": "Where middle frames are centered in the video, as a fraction of total length."
-                }),
-            },
-            "optional": {
-                "first": ("IMAGE",),
-                "middle": ("IMAGE",),
-                "last": ("IMAGE",),
-            }
-        }
+    def define_schema(cls):
+        return io.Schema(
+            node_id="WanVACEFirstMiddleLast",
+            display_name="🪐 VACE First/Middle/Last (Experimental)",
+            category="Wan VACE Prep/VACE",
+            description=(
+                "Builds a VACE control video and mask from optional first, middle, and last "
+                "frame batches. Known frames are placed at their positions with mask=0; "
+                "remaining frames are gray placeholders with mask=1 for generation."
+            ),
+            is_experimental=True,
+            inputs=[
+                io.Int.Input("width", default=832, min=16, max=16384, step=16),
+                io.Int.Input("height", default=480, min=16, max=16384, step=16),
+                io.Int.Input("length", default=81, min=1, max=16384, step=4,
+                    tooltip="Total frame count. Must follow the 4n+1 pattern (1, 5, 9, ..., 81, ...)."),
+                io.Float.Input("middle_position", default=0.5, min=0.0, max=1.0, step=0.01,
+                    tooltip="Where middle frames are centered in the video, as a fraction of total length."),
+                io.Image.Input("first", optional=True),
+                io.Image.Input("middle", optional=True),
+                io.Image.Input("last", optional=True),
+            ],
+            outputs=[
+                io.Image.Output("control_video"),
+                io.Mask.Output("control_mask"),
+                io.Int.Output("width"),
+                io.Int.Output("height"),
+                io.Int.Output("length"),
+            ],
+        )
 
-    RETURN_TYPES = ("IMAGE", "MASK", "INT", "INT", "INT")
-    RETURN_NAMES = ("control_video", "control_mask", "width", "height", "length")
-    FUNCTION = "run"
-    CATEGORY = "video/VACE"
-    DESCRIPTION = (
-        "Builds a VACE control video and mask from optional first, middle, and last "
-        "frame batches. Known frames are placed at their positions with mask=0; "
-        "remaining frames are gray placeholders with mask=1 for generation."
-    )
-    EXPERIMENTAL = True
-
-    def run(self, width, height, length, middle_position, first=None, middle=None, last=None):
+    @classmethod
+    def execute(cls, width, height, length, middle_position, first=None, middle=None, last=None) -> io.NodeOutput:
         snapped_width = (width // 16) * 16
         snapped_height = (height // 16) * 16
         snapped_length = ((length - 1) // 4) * 4 + 1
@@ -99,4 +100,4 @@ class WanVACEFirstMiddleLast:
                 control[mid_start:mid_end] = middle[:n_mid, :, :, :3]
                 mask[mid_start:mid_end] = 0.0
 
-        return (control, mask, width, height, length)
+        return io.NodeOutput(control, mask, width, height, length)

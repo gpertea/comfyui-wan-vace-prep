@@ -3,6 +3,7 @@ import os
 import numpy as np
 import torch
 from PIL import Image, ImageDraw, ImageFont
+from comfy_api.latest import io
 
 
 def _load_font(font_size):
@@ -21,32 +22,33 @@ def _load_font(font_size):
         return ImageFont.load_default()
 
 
-class FrameNumberOverlay:
-    EXPERIMENTAL = True
+class FrameNumberOverlay(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="FrameNumberOverlay",
+            display_name="🪐 Frame Number Overlay (Experimental)",
+            category="Wan VACE Prep/utility",
+            description="Burns the frame number into every frame of an IMAGE batch as a text overlay.",
+            is_experimental=True,
+            inputs=[
+                io.Image.Input("images"),
+                io.Int.Input("font_size", default=32, min=8, max=256),
+                io.Int.Input("start_index", default=0, min=0, max=99999),
+                io.Combo.Input("position", options=["top-left", "top-right", "bottom-left", "bottom-right"]),
+                io.Int.Input("padding", default=10, min=0, max=256),
+                io.String.Input("font_color", default="white"),
+                io.String.Input("prefix", default=""),
+                io.String.Input("suffix", default=""),
+            ],
+            outputs=[
+                io.Image.Output("images"),
+            ],
+        )
 
     @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "images": ("IMAGE",),
-                "font_size": ("INT", {"default": 32, "min": 8, "max": 256}),
-                "start_index": ("INT", {"default": 0, "min": 0, "max": 99999}),
-                "position": (["top-left", "top-right", "bottom-left", "bottom-right"],),
-                "padding": ("INT", {"default": 10, "min": 0, "max": 256}),
-                "font_color": ("STRING", {"default": "white"}),
-                "prefix": ("STRING", {"default": ""}),
-                "suffix": ("STRING", {"default": ""}),
-            }
-        }
-
-    RETURN_TYPES = ("IMAGE",)
-    RETURN_NAMES = ("images",)
-    FUNCTION = "apply_overlay"
-    CATEGORY = "video/utility"
-    DESCRIPTION = "Burns the frame number into every frame of an IMAGE batch as a text overlay."
-
-    def apply_overlay(self, images, font_size=32, start_index=0, position="top-left", padding=10,
-                      font_color="white", prefix="", suffix=""):
+    def execute(cls, images, font_size=32, start_index=0, position="top-left", padding=10,
+                font_color="white", prefix="", suffix="") -> io.NodeOutput:
         font = _load_font(font_size)
         result = []
 
@@ -73,5 +75,5 @@ class FrameNumberOverlay:
             frame_out = torch.from_numpy(np.array(img).astype(np.float32) / 255.0)
             result.append(frame_out)
 
-        return (torch.stack(result),)
+        return io.NodeOutput(torch.stack(result))
 

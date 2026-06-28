@@ -3,61 +3,60 @@ import re
 import av
 import numpy as np
 import torch
+from comfy_api.latest import io
 
 
-class LoadVideosFromFolderSimple:
+class LoadVideosFromFolderSimple(io.ComfyNode):
     VIDEO_EXTENSIONS = ['webm', 'mp4', 'mkv', 'gif', 'mov']
 
     @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "folder_path": ("STRING", {"default": ""}),
-                "debug": ("BOOLEAN", {
-                    "default": False,
-                    "tooltip": "Log some details to the console"
-                }),
-            },
-            "optional": {
-                "meta_batch": ("VHS_BatchManager",),
-            },
-            "hidden": {
-                "unique_id": "UNIQUE_ID",
-            },
-        }
+    def define_schema(cls):
+        return io.Schema(
+            node_id="LoadVideosFromFolderSimple",
+            display_name="🪐 Load Videos From Folder (Simple)",
+            category="Wan VACE Prep/utility",
+            description=(
+                "Load all videos from a folder, concatenated into\n"
+                "a single image batch with their audio tracks combined.\n"
+                "Optionally connect a VideoHelperSuite Meta Batch Manager\n"
+                "to process large collections in smaller RAM-safe chunks. See\n"
+                "VHS Meta Batch Manager documentation for more information."
+            ),
+            inputs=[
+                io.String.Input("folder_path", default=""),
+                io.Boolean.Input("debug", default=False,
+                    tooltip="Log some details to the console"),
+                io.Custom("VHS_BatchManager").Input("meta_batch", optional=True),
+            ],
+            outputs=[
+                io.Image.Output("images"),
+                io.Audio.Output("audio"),
+            ],
+            hidden=[io.Hidden.unique_id],
+        )
 
-    RETURN_TYPES = ("IMAGE", "AUDIO")
-    RETURN_NAMES = ("images", "audio")
-    FUNCTION = "load_videos"
-    CATEGORY = "video/utility"
-    DESCRIPTION = """
-    Load all videos from a folder, concatenated into
-    a single image batch with their audio tracks combined.
-    Optionally connect a VideoHelperSuite Meta Batch Manager
-    to process large collections in smaller RAM-safe chunks. See
-    VHS Meta Batch Manager documentation for more information.
-    """
-
-    def load_videos(self, folder_path, debug, meta_batch=None, unique_id=None):
+    @classmethod
+    def execute(cls, folder_path, debug, meta_batch=None) -> io.NodeOutput:
         folder_path = folder_path.strip().strip('"').strip("'")
 
         if not os.path.isdir(folder_path):
             raise ValueError(f"Folder does not exist: {folder_path}")
 
-        video_files = self._get_video_files(folder_path)
+        video_files = cls._get_video_files(folder_path)
 
         if not video_files:
             raise ValueError(
                 f"No video files found in {folder_path}\n"
-                f"Supported formats: {', '.join(self.VIDEO_EXTENSIONS)}"
+                f"Supported formats: {', '.join(cls.VIDEO_EXTENSIONS)}"
             )
 
         if meta_batch is None:
-            return self._load_all(video_files, folder_path, debug)
+            return io.NodeOutput(*cls._load_all(video_files, folder_path, debug))
         else:
-            return self._load_batched(video_files, folder_path, debug, meta_batch, unique_id)
+            return io.NodeOutput(*cls._load_batched(video_files, folder_path, debug, meta_batch, cls.hidden.unique_id))
 
-    def _load_all(self, video_files, folder_path, debug):
+    @classmethod
+    def _load_all(cls, video_files, folder_path, debug):
         """Load all videos at once into a single tensor with concatenated audio."""
         if debug:
             print(f"[Load Videos] Loading {len(video_files)} videos from {folder_path}")
@@ -73,8 +72,8 @@ class LoadVideosFromFolderSimple:
             if debug:
                 print(f"[Load Videos] [{idx+1}/{len(video_files)}]: {os.path.basename(video_path)}", end=" ... ")
 
-            frames, audio_dict, _ = self._load_video_with_audio(video_path, target_sample_rate)
-            expected_shape = self._check_resolution(frames, expected_shape, video_path)
+            frames, audio_dict, _ = cls._load_video_with_audio(video_path, target_sample_rate)
+            expected_shape = cls._check_resolution(frames, expected_shape, video_path)
             all_frames.append(frames)
 
             if debug:
@@ -89,7 +88,7 @@ class LoadVideosFromFolderSimple:
                         target_sample_rate = audio_dict["sample_rate"]
                         expected_channels = audio_dict["waveform"].shape[1]
                     else:
-                        audio_dict = self._normalize_audio_channels(audio_dict, expected_channels, video_path)
+                        audio_dict = cls._normalize_audio_channels(audio_dict, expected_channels, video_path)
                     all_audio.append(audio_dict["waveform"])
 
         if debug:
@@ -107,7 +106,8 @@ class LoadVideosFromFolderSimple:
             print(f"[Load Videos] Done")
         return (output, audio_output)
 
-    def _load_batched(self, video_files, folder_path, debug, meta_batch, unique_id):
+    @classmethod
+    def _load_batched(cls, video_files, folder_path, debug, meta_batch, unique_id):
         """
         Load frames in chunks coordinated by the VHS BatchManager.
         Audio is pre-loaded in full on the first call and returned unchanged on
@@ -115,14 +115,14 @@ class LoadVideosFromFolderSimple:
         audio track (it overwrites the audio slot each pass, keeping the last value).
         """
         if unique_id not in meta_batch.inputs:
-            total_frames = self._count_total_frames(video_files)
+            total_frames = cls._count_total_frames(video_files)
             meta_batch.total_frames = min(meta_batch.total_frames, total_frames)
             if debug:
                 print(f"[Load Videos] Batched: Starting new generator for {len(video_files)} videos ({total_frames} frames) in {folder_path}")
 
-            audio_output = self._preload_audio(video_files, debug)
+            audio_output = cls._preload_audio(video_files, debug)
             meta_batch.inputs[unique_id] = {
-                'generator': self._frame_generator(video_files, debug),
+                'generator': cls._frame_generator(video_files, debug),
                 'audio_output': audio_output,
             }
 
@@ -144,7 +144,7 @@ class LoadVideosFromFolderSimple:
                 meta_batch.has_closed_inputs = True
                 break
 
-            expected_shape = self._check_resolution(
+            expected_shape = cls._check_resolution(
                 frame_tensor.unsqueeze(0), expected_shape, video_path
             )
             batch_frames.append(frame_tensor)
@@ -160,7 +160,8 @@ class LoadVideosFromFolderSimple:
 
         return (output, state['audio_output'])
 
-    def _load_video_with_audio(self, video_path, target_sample_rate):
+    @classmethod
+    def _load_video_with_audio(cls, video_path, target_sample_rate):
         """
         Decode all video frames and extract matching audio.
         Returns (frames_tensor, audio_dict_or_none, frame_count).
@@ -186,10 +187,11 @@ class LoadVideosFromFolderSimple:
 
         frame_count = len(frames)
         frames_tensor = torch.stack(frames, dim=0)
-        audio_dict = self._extract_audio(video_path, frame_count, fps, target_sample_rate)
+        audio_dict = cls._extract_audio(video_path, frame_count, fps, target_sample_rate)
         return frames_tensor, audio_dict, frame_count
 
-    def _scan_video_timing(self, video_path):
+    @classmethod
+    def _scan_video_timing(cls, video_path):
         """
         Decode video stream (discarding frame data) to count frames and get fps.
         Returns (frame_count, fps).
@@ -209,7 +211,8 @@ class LoadVideosFromFolderSimple:
 
         return frame_count, fps
 
-    def _extract_audio(self, video_path, frame_count, fps, target_sample_rate):
+    @classmethod
+    def _extract_audio(cls, video_path, frame_count, fps, target_sample_rate):
         """
         Extract audio from the start of the file, trimmed to exactly frame_count / fps seconds.
         No seeking or PTS offset - audio and video both start at the beginning of the clip.
@@ -256,7 +259,8 @@ class LoadVideosFromFolderSimple:
             "sample_rate": out_rate,
         }
 
-    def _preload_audio(self, video_files, debug):
+    @classmethod
+    def _preload_audio(cls, video_files, debug):
         """
         Pre-extract and concatenate audio for all videos.
         Returns a complete audio dict or None if any video lacks audio.
@@ -266,8 +270,8 @@ class LoadVideosFromFolderSimple:
         expected_channels = None
 
         for video_path in video_files:
-            frame_count, fps = self._scan_video_timing(video_path)
-            audio_dict = self._extract_audio(video_path, frame_count, fps, target_sample_rate)
+            frame_count, fps = cls._scan_video_timing(video_path)
+            audio_dict = cls._extract_audio(video_path, frame_count, fps, target_sample_rate)
 
             if audio_dict is None:
                 print(f"[Load Videos] Warning: no audio in {os.path.basename(video_path)}, audio output disabled")
@@ -277,7 +281,7 @@ class LoadVideosFromFolderSimple:
                 target_sample_rate = audio_dict["sample_rate"]
                 expected_channels = audio_dict["waveform"].shape[1]
             else:
-                audio_dict = self._normalize_audio_channels(audio_dict, expected_channels, video_path)
+                audio_dict = cls._normalize_audio_channels(audio_dict, expected_channels, video_path)
             all_audio.append(audio_dict["waveform"])
 
         if not all_audio:
@@ -288,7 +292,8 @@ class LoadVideosFromFolderSimple:
             "sample_rate": target_sample_rate,
         }
 
-    def _normalize_audio_channels(self, audio_dict, expected_channels, video_path):
+    @classmethod
+    def _normalize_audio_channels(cls, audio_dict, expected_channels, video_path):
         """Normalize channel count to match expected_channels. Handles mono/stereo mismatches."""
         waveform = audio_dict["waveform"]  # [1, channels, samples]
         actual_channels = waveform.shape[1]
@@ -308,12 +313,13 @@ class LoadVideosFromFolderSimple:
 
         return {"waveform": waveform, "sample_rate": audio_dict["sample_rate"]}
 
-    def _get_video_files(self, folder_path):
+    @classmethod
+    def _get_video_files(cls, folder_path):
         """Return naturally-sorted list of video file paths in folder_path."""
         video_files = []
         for f in os.listdir(folder_path):
             full_path = os.path.join(folder_path, f)
-            if os.path.isfile(full_path) and self._is_video_file(f):
+            if os.path.isfile(full_path) and cls._is_video_file(f):
                 video_files.append(full_path)
 
         def natural_sort_key(path):
@@ -322,32 +328,14 @@ class LoadVideosFromFolderSimple:
 
         return sorted(video_files, key=natural_sort_key)
 
-    def _is_video_file(self, filename):
+    @classmethod
+    def _is_video_file(cls, filename):
         """Return True if filename has a supported video extension."""
         _, ext = os.path.splitext(filename)
-        return ext.lstrip('.').lower() in self.VIDEO_EXTENSIONS
+        return ext.lstrip('.').lower() in cls.VIDEO_EXTENSIONS
 
-    def _load_video_frames(self, video_path):
-        """Load all frames from a video file. Returns [N, H, W, C] float32 tensor."""
-        container = av.open(video_path)
-        try:
-            if len(container.streams.video) == 0:
-                raise ValueError(f"No video stream found in: {video_path}")
-
-            frames = []
-            for frame in container.decode(video=0):
-                rgb = frame.to_ndarray(format="rgb24")
-                frame_tensor = torch.from_numpy(rgb.astype(np.float32) / 255.0)
-                frames.append(frame_tensor)
-
-            if not frames:
-                raise RuntimeError(f"No frames extracted from {video_path}")
-
-            return torch.stack(frames, dim=0)
-        finally:
-            container.close()
-
-    def _check_resolution(self, frames, expected_shape, video_path):
+    @classmethod
+    def _check_resolution(cls, frames, expected_shape, video_path):
         """
         Verify frames match expected_shape (H, W) from tensor shape[1:3].
         Returns expected_shape, initialising it from frames if not yet set.
@@ -363,7 +351,8 @@ class LoadVideosFromFolderSimple:
             )
         return expected_shape
 
-    def _count_total_frames(self, video_files):
+    @classmethod
+    def _count_total_frames(cls, video_files):
         """Fast frame count estimate using container metadata.
 
         Used by VHS BatchManager for progress display. Falls back to
@@ -388,7 +377,8 @@ class LoadVideosFromFolderSimple:
                     container.close()
         return total
 
-    def _frame_generator(self, video_files, debug):
+    @classmethod
+    def _frame_generator(cls, video_files, debug):
         """
         Generator that yields (frame_tensor, video_path) one frame at a time
         across all videos. Keeps at most one video open at a time.

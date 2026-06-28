@@ -1,28 +1,35 @@
 import torch
+from comfy_api.latest import io
 
 
-class WanVACEInpaint:
+class WanVACEInpaint(io.ComfyNode):
     @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "video": ("IMAGE",),
-                "mask": ("MASK",),
-            },
-        }
+    def define_schema(cls):
+        return io.Schema(
+            node_id="WanVACEInpaint",
+            display_name="🪐 VACE Inpaint (Experimental)",
+            category="Wan VACE Prep/VACE",
+            description=(
+                "Prepares a video for VACE inpainting. Masked regions (mask=1) are "
+                "replaced with a gray placeholder so Wan VACE will regenerate them while "
+                "preserving the rest."
+            ),
+            is_experimental=True,
+            inputs=[
+                io.Image.Input("video"),
+                io.Mask.Input("mask"),
+            ],
+            outputs=[
+                io.Image.Output("control_video"),
+                io.Mask.Output("control_mask"),
+                io.Int.Output("width"),
+                io.Int.Output("height"),
+                io.Int.Output("length"),
+            ],
+        )
 
-    RETURN_TYPES = ("IMAGE", "MASK", "INT", "INT", "INT")
-    RETURN_NAMES = ("control_video", "control_mask", "width", "height", "length")
-    FUNCTION = "run"
-    CATEGORY = "Wan VACE Prep"
-    DESCRIPTION = (
-        "Prepares a video for VACE inpainting. Masked regions (mask=1) are "
-        "replaced with a gray placeholder so Wan VACE will regenerate them while "
-        "preserving the rest."
-    )
-    EXPERIMENTAL = True
-    
-    def run(self, video, mask):
+    @classmethod
+    def execute(cls, video, mask) -> io.NodeOutput:
         N, H, W, C = video.shape
 
         if W % 16 != 0 or H % 16 != 0:
@@ -53,6 +60,4 @@ class WanVACEInpaint:
         mask_bool = mask > 0.5  # [N, H, W]
         masked_video[mask_bool] = 0.5
 
-        return (masked_video, mask, W, H, N)
-
-
+        return io.NodeOutput(masked_video, mask, W, H, N)

@@ -2,42 +2,42 @@
 Wan VACE Prep - Custom nodes for preparing videos for Wan VACE generation
 """
 
+from comfy_api.latest import ComfyExtension, io
+
 from .vace_join import WanVACEPrep, WanVACEPrepBatch
 from .vace_extend import WanVACEExtend
 from .load_videos_from_folder import LoadVideosFromFolderSimple
 from .vace_batch_context import WanVACEBatchContext
 from .frame_number_overlay import FrameNumberOverlay
-from .vace_outpaint import VACEOutpaint
 from .vace_inpaint import WanVACEInpaint
-from .wan_first_last_middle_frame import WanFirstLastMiddleFrameToVideo
+from .wan_first_middle_last_frame import WanFirstMiddleLastFrameToVideo
 from .vace_first_middle_last import WanVACEFirstMiddleLast
 
-NODE_CLASS_MAPPINGS = {
-    "WanVACEPrep": WanVACEPrep,
-    "WanVACEPrepBatch": WanVACEPrepBatch,
-    "WanVACEExtend": WanVACEExtend,
-    "LoadVideosFromFolderSimple": LoadVideosFromFolderSimple,
-    "WanVACEBatchContext": WanVACEBatchContext,
-    "FrameNumberOverlay": FrameNumberOverlay,
-    "VACEOutpaint": VACEOutpaint,
-    "WanVACEInpaint": WanVACEInpaint,
-    "WanFirstLastMiddleFrameToVideo": WanFirstLastMiddleFrameToVideo,
-    "WanVACEFirstMiddleLast": WanVACEFirstMiddleLast,
-}
+# NOTE: vace_outpaint.py (VACEOutpaint) is still a V1 node and is intentionally
+# left unregistered for now. Once it is migrated to V3 it can be imported and
+# added to get_node_list() below. Node display names come from each node's
+# Schema.display_name, so no NODE_DISPLAY_NAME_MAPPINGS is needed here.
 
-NODE_DISPLAY_NAME_MAPPINGS = {
-    "WanVACEPrep": "🪐 VACE Join",
-    "WanVACEPrepBatch": "🪐 VACE Join (Batch)",
-    "WanVACEExtend": "🪐 VACE Extend",
-    "LoadVideosFromFolderSimple": "🪐 Load Videos From Folder (Simple)",
-    "WanVACEBatchContext": "🪐 VACE Batch Context",
-    "FrameNumberOverlay": "🪐 Frame Number Overlay",
-    "VACEOutpaint": "🪐 Video Outpaint",
-    "WanVACEInpaint": "🪐 Wan VACE Inpaint (Experimental)",
-    "WanFirstLastMiddleFrameToVideo": "🪐 Wan First/Last/Middle Frame to Video",
-    "WanVACEFirstMiddleLast": "🪐 VACE First/Middle/Last",
-}
+
+class WanVacePrepExtension(ComfyExtension):
+    async def get_node_list(self) -> list[type[io.ComfyNode]]:
+        return [
+            WanVACEPrep,
+            WanVACEPrepBatch,
+            WanVACEExtend,
+            LoadVideosFromFolderSimple,
+            WanVACEBatchContext,
+            FrameNumberOverlay,
+            WanVACEInpaint,
+            WanFirstMiddleLastFrameToVideo,
+            WanVACEFirstMiddleLast,
+        ]
+
+
+async def comfy_entrypoint() -> WanVacePrepExtension:
+    return WanVacePrepExtension()
+
 
 WEB_DIRECTORY = "./web"
 
-__all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS", "WEB_DIRECTORY"]
+__all__ = ["comfy_entrypoint", "WEB_DIRECTORY"]

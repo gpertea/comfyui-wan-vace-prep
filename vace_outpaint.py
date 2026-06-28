@@ -70,7 +70,7 @@ class VACEOutpaint:
     RETURN_NAMES = ("control_video", "control_mask", "width", "height", "length")
     FUNCTION = "outpaint_prep"
     OUTPUT_NODE = True
-    CATEGORY = "video/VACE"
+    CATEGORY = "Wan VACE Prep/VACE"
     DESCRIPTION = (
         "Interactive outpaint layout: position a crop/output window over source frames "
         "to generate a VACE control video and binary outpaint mask. "

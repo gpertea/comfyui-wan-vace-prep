@@ -3,42 +3,45 @@ import comfy.model_management
 import comfy.utils
 import comfy.clip_vision
 import node_helpers
+from comfy_api.latest import io
 
 
-class WanFirstLastMiddleFrameToVideo:
+class WanFirstMiddleLastFrameToVideo(io.ComfyNode):
     @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "positive": ("CONDITIONING",),
-                "negative": ("CONDITIONING",),
-                "vae": ("VAE",),
-                "width": ("INT", {"default": 832, "min": 16, "max": 16384, "step": 16}),
-                "height": ("INT", {"default": 480, "min": 16, "max": 16384, "step": 16}),
-                "length": ("INT", {"default": 81, "min": 1, "max": 16384, "step": 4}),
-                "batch_size": ("INT", {"default": 1, "min": 1, "max": 4096}),
-            },
-            "optional": {
-                "start_image": ("IMAGE",),
-                "end_image": ("IMAGE",),
-                "middle_image": ("IMAGE",),
-                "middle_frame": ("FLOAT", {"default": 0.5, "min": 0.0, "max": 1.0, "step": 0.01}),
-                "clip_vision_start_image": ("CLIP_VISION_OUTPUT",),
-                "clip_vision_end_image": ("CLIP_VISION_OUTPUT",),
-                "clip_vision_middle_image": ("CLIP_VISION_OUTPUT",),
-            },
-        }
+    def define_schema(cls):
+        return io.Schema(
+            node_id="WanFMLF2V",
+            display_name="🪐 Wan First/Middle/Last Frame to Video (Experimental)",
+            category="Wan VACE Prep/conditioning",
+            is_experimental=True,
+            inputs=[
+                io.Conditioning.Input("positive"),
+                io.Conditioning.Input("negative"),
+                io.Vae.Input("vae"),
+                io.Int.Input("width", default=832, min=16, max=16384, step=16),
+                io.Int.Input("height", default=480, min=16, max=16384, step=16),
+                io.Int.Input("length", default=81, min=1, max=16384, step=4),
+                io.Int.Input("batch_size", default=1, min=1, max=4096),
+                io.Image.Input("start_image", optional=True),
+                io.Image.Input("middle_image", optional=True),
+                io.Float.Input("middle_frame", default=0.5, min=0.0, max=1.0, step=0.01, optional=True),
+                io.Image.Input("end_image", optional=True),
+                io.ClipVisionOutput.Input("clip_vision_start_image", optional=True),
+                io.ClipVisionOutput.Input("clip_vision_middle_image", optional=True),
+                io.ClipVisionOutput.Input("clip_vision_end_image", optional=True),
+            ],
+            outputs=[
+                io.Conditioning.Output("positive"),
+                io.Conditioning.Output("negative"),
+                io.Latent.Output("latent"),
+            ],
+        )
 
-    RETURN_TYPES = ("CONDITIONING", "CONDITIONING", "LATENT")
-    RETURN_NAMES = ("positive", "negative", "latent")
-    FUNCTION = "execute"
-    CATEGORY = "wan_vace_prep"
-    EXPERIMENTAL = True
-
-    def execute(self, positive, negative, vae, width, height, length, batch_size,
-                start_image=None, end_image=None, middle_image=None, middle_frame=0.5,
-                clip_vision_start_image=None, clip_vision_end_image=None,
-                clip_vision_middle_image=None):
+    @classmethod
+    def execute(cls, positive, negative, vae, width, height, length, batch_size,
+                start_image=None, middle_image=None, middle_frame=0.5, end_image=None,
+                clip_vision_start_image=None, clip_vision_middle_image=None,
+                clip_vision_end_image=None) -> io.NodeOutput:
         spacial_scale = vae.spacial_compression_encode()
         latent = torch.zeros(
             [batch_size, vae.latent_channels, ((length - 1) // 4) + 1,
@@ -124,4 +127,4 @@ class WanFirstLastMiddleFrameToVideo:
 
         out_latent = {}
         out_latent["samples"] = latent
-        return (positive, negative, out_latent)
+        return io.NodeOutput(positive, negative, out_latent)

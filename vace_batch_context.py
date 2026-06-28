@@ -1,55 +1,51 @@
 import os
 
-class WanVACEBatchContext:
+from comfy_api.latest import io
+
+
+class WanVACEBatchContext(io.ComfyNode):
     @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "input_list": ("STRING", {"forceInput": True}),
-                "input_dir": ("STRING", {
-                    "default": "",
-                    "tooltip": "Directory containing input videos"
-                }),
-                "project_name": ("STRING", {
-                    "default": "",
-                    "tooltip": "Project name - workflow files will be created under ComfyUI/output/project_name."
-                }),
-                "index": ("INT", {
-                    "default": 0,
-                    "min": 0,
-                    "tooltip": "Current iteration index (0 based)"
-                }),
-                "debug": ("BOOLEAN", {
-                    "default": False,
-                    "tooltip": "Log some details to the console"
-                }),
-                "make_loop": ("BOOLEAN", {
-                    "default": False,
-                    "tooltip": "Generate an extra loop-closing transition between the last and first video"
-                }),
-            }
-        }
+    def define_schema(cls):
+        return io.Schema(
+            node_id="WanVACEBatchContext",
+            display_name="🪐 VACE Batch Context",
+            category="Wan VACE Prep/VACE",
+            description="Establishes iteration context for batch video join processing.",
+            is_input_list=True,
+            inputs=[
+                io.String.Input("input_list", force_input=True),
+                io.String.Input("input_dir", default="",
+                    tooltip="Directory containing input videos"),
+                io.String.Input("project_name", default="",
+                    tooltip="Project name - workflow files will be created under ComfyUI/output/project_name."),
+                io.Int.Input("index", default=0, min=0,
+                    tooltip="Current iteration index (0 based)"),
+                io.Boolean.Input("debug", default=False,
+                    tooltip="Log some details to the console"),
+                io.Boolean.Input("make_loop", default=False,
+                    tooltip="Generate an extra loop-closing transition between the last and first video"),
+            ],
+            outputs=[
+                io.String.Output("work_dir"),
+                io.String.Output("workfile_prefix"),
+                io.String.Output("video_1_filename"),
+                io.String.Output("video_2_filename"),
+                io.Boolean.Output("is_first"),
+                io.Boolean.Output("is_last"),
+                io.Boolean.Output("assemble_video"),
+            ],
+        )
 
-    RETURN_TYPES = ("STRING", "STRING", "STRING", "STRING", "BOOLEAN", "BOOLEAN", "BOOLEAN")
-    RETURN_NAMES = ("work_dir", "workfile_prefix", "video_1_filename", "video_2_filename", "is_first", "is_last", "assemble_video")
-    FUNCTION = "setup_context"
-    CATEGORY = "video/VACE"
-    DESCRIPTION = """
-    Establishes iteration context for batch video join processing.
-    """
-    INPUT_IS_LIST = True
-
-    def setup_context(self, **kwargs):
-        # INPUT_IS_LIST=True makes ComfyUI deliver every input as a list.
-        # The **kwargs signature is required because list-mode inputs can't
-        # be declared as positional parameters — ComfyUI wraps each value
-        # in a list, including scalars, so we unwrap with [0] here.
-        input_dir = kwargs.get('input_dir', [""])[0]
-        input_list = kwargs.get('input_list', [])
-        project_name = kwargs.get('project_name', [""])[0].strip()
-        index = kwargs.get('index', [0])[0]
-        debug = kwargs.get('debug', [False])[0]
-        make_loop = kwargs.get('make_loop', [False])[0]
+    @classmethod
+    def execute(cls, input_list, input_dir, project_name, index, debug, make_loop) -> io.NodeOutput:
+        # is_input_list=True makes ComfyUI deliver every input as a list, including
+        # scalar widgets. input_list is the multi-element upstream list; the rest are
+        # single-element lists we unwrap with [0].
+        input_dir = input_dir[0]
+        project_name = project_name[0].strip()
+        index = index[0]
+        debug = debug[0]
+        make_loop = make_loop[0]
 
         # Validate input list
         list_length = len(input_list)
@@ -112,5 +108,5 @@ class WanVACEBatchContext:
             print(f"[VACE Batch Context] Work prefix: {workfile_prefix}")
             print(f"[VACE Batch Context] === End ===")
 
-        return (work_dir, workfile_prefix, video_1_filename, video_2_filename, is_first, is_last, assemble_video)
+        return io.NodeOutput(work_dir, workfile_prefix, video_1_filename, video_2_filename, is_first, is_last, assemble_video)
 

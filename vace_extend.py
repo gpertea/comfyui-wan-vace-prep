@@ -1,45 +1,41 @@
 import torch
+from comfy_api.latest import io
 
-class WanVACEExtend:
+
+class WanVACEExtend(io.ComfyNode):
     @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "video": ("IMAGE",),
-                "extend_from_idx": ("INT", {
-                    "default": -1,
-                    "min": -1000000,
-                    "max": 1000000,
-                    "step": 1,
-                    "tooltip": "Frame index to extend from. Negative values count from the end of the video. e.g., -1 is last frame"
-                }),
-                "context_frames": ("INT", {
-                    "default": 8,
-                    "min": 4,
-                    "max": 120,
-                    "step": 4,
-                    "tooltip": "Number of reference frames before extend_from_idx for VACE conditioning (multiple of 4)."
-                }),
-                "new_frames": ("INT", {
-                    "default": 25,
-                    "min": 1,
-                    "max": 241,
-                    "step": 4,
-                    "tooltip": "Number of new frames to generate (4n+1)."
-                }),
-            }
-        }
+    def define_schema(cls):
+        return io.Schema(
+            node_id="WanVACEExtend",
+            display_name="🪐 VACE Extend",
+            category="Wan VACE Prep/VACE",
+            description=(
+                "Generates VACE control video and mask for extending a video from an\n"
+                "arbitrary position using context frames."
+            ),
+            inputs=[
+                io.Image.Input("video"),
+                io.Int.Input("extend_from_idx", default=-1, min=-1000000, max=1000000, step=1,
+                    tooltip="Frame index to extend from. Negative values count from the end of the video. e.g., -1 is last frame"),
+                io.Int.Input("context_frames", default=8, min=4, max=120, step=4,
+                    tooltip="Number of reference frames before extend_from_idx for VACE conditioning (multiple of 4)."),
+                io.Int.Input("new_frames", default=25, min=1, max=241, step=4,
+                    tooltip="Number of new frames to generate (4n+1)."),
+            ],
+            outputs=[
+                io.Image.Output("control_video"),
+                io.Mask.Output("control_mask"),
+                io.Int.Output("width"),
+                io.Int.Output("height"),
+                io.Int.Output("length"),
+                io.Image.Output("start_images"),
+                io.Int.Output("context_frames"),
+                io.Int.Output("new_frames"),
+            ],
+        )
 
-    RETURN_TYPES = ("IMAGE", "MASK", "INT", "INT", "INT", "IMAGE", "INT", "INT")
-    RETURN_NAMES = ("control_video", "control_mask", "width", "height", "length", "start_images", "context_frames", "new_frames")
-    FUNCTION = "vace_extend"
-    CATEGORY = "video/VACE"
-    DESCRIPTION = """
-    Generates VACE control video and mask for extending a video from an
-    arbitrary position using context frames.
-    """
-
-    def vace_extend(self, video, extend_from_idx, context_frames, new_frames):
+    @classmethod
+    def execute(cls, video, extend_from_idx, context_frames, new_frames) -> io.NodeOutput:
         height = video.shape[1]
         width = video.shape[2]
         video_length = video.shape[0]
@@ -99,4 +95,4 @@ class WanVACEExtend:
 
         length = int(control_video.shape[0])
 
-        return (control_video, mask, width, height, length, start_images, context_frames, new_frames)
+        return io.NodeOutput(control_video, mask, width, height, length, start_images, context_frames, new_frames)

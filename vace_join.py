@@ -1,7 +1,10 @@
 import torch
+from comfy_api.latest import io
+
 
 class WanVACEPrepBase:
-    def _validate_dimensions(self, video_1, video_2):
+    @staticmethod
+    def _validate_dimensions(video_1, video_2):
         """Validate that both videos have matching, 16-divisible dimensions."""
         height = video_1.shape[1]
         width = video_1.shape[2]
@@ -21,7 +24,8 @@ class WanVACEPrepBase:
 
         return width, height
 
-    def _extract_context(self, video_1, video_2, context_frames, replace_frames):
+    @staticmethod
+    def _extract_context(video_1, video_2, context_frames, replace_frames):
         """Extract context frames from each video edge for the control video."""
         if replace_frames > 0:
             v1_context = video_1[-(context_frames + replace_frames):-replace_frames]
@@ -31,7 +35,8 @@ class WanVACEPrepBase:
             v2_context = video_2[:context_frames]
         return v1_context, v2_context
 
-    def _build_control_video_and_mask(self, video_1, v1_context, v2_context,
+    @staticmethod
+    def _build_control_video_and_mask(video_1, v1_context, v2_context,
                                       context_frames, replace_frames, new_frames,
                                       height, width):
         """Build the control video tensor and mask."""
@@ -54,48 +59,44 @@ class WanVACEPrepBase:
         return control_video, mask, vace_count
 
 
-class WanVACEPrep(WanVACEPrepBase):
+class WanVACEPrep(WanVACEPrepBase, io.ComfyNode):
     @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "video_1": ("IMAGE",),
-                "video_2": ("IMAGE",),
-                "context_frames": ("INT", {
-                    "default": 8,
-                    "min": 4,
-                    "max": 120,
-                    "step": 4,
-                    "tooltip": "Reference frames from each video edge for VACE interpolation (multiple of 4)."
-                }),
-                "replace_frames": ("INT", {
-                    "default": 8,
-                    "min": 0,
-                    "max": 120,
-                    "step": 4,
-                    "tooltip": "Number of frames to regenerate at each transition edge (multiple of 4)."
-                }),
-                "new_frames": ("INT", {
-                    "default": 0,
-                    "min": 0,
-                    "max": 240,
-                    "step": 4,
-                    "tooltip": "Number of new transition frames to generate, in addition to the replace_frames (multiple of 4)."
-                }),
-            }
-        }
+    def define_schema(cls):
+        return io.Schema(
+            node_id="WanVACEPrep",
+            display_name="🪐 VACE Join",
+            category="Wan VACE Prep/VACE",
+            description=(
+                "Generates VACE control video and mask for smooth transitions between\n"
+                "two videos using context frames and frame replacement."
+            ),
+            inputs=[
+                io.Image.Input("video_1"),
+                io.Image.Input("video_2"),
+                io.Int.Input("context_frames", default=8, min=4, max=120, step=4,
+                    tooltip="Reference frames from each video edge for VACE interpolation (multiple of 4)."),
+                io.Int.Input("replace_frames", default=8, min=0, max=120, step=4,
+                    tooltip="Number of frames to regenerate at each transition edge (multiple of 4)."),
+                io.Int.Input("new_frames", default=0, min=0, max=240, step=4,
+                    tooltip="Number of new transition frames to generate, in addition to the replace_frames (multiple of 4)."),
+            ],
+            outputs=[
+                io.Image.Output("control_video"),
+                io.Mask.Output("control_mask"),
+                io.Int.Output("width"),
+                io.Int.Output("height"),
+                io.Int.Output("length"),
+                io.Image.Output("start_images"),
+                io.Image.Output("end_images"),
+                io.Int.Output("context_frames"),
+                io.Int.Output("replace_frames"),
+                io.Int.Output("new_frames"),
+            ],
+        )
 
-    RETURN_TYPES = ("IMAGE", "MASK", "INT", "INT", "INT", "IMAGE", "IMAGE", "INT", "INT", "INT")
-    RETURN_NAMES = ("control_video", "control_mask", "width", "height", "length", "start_images", "end_images", "context_frames", "replace_frames", "new_frames")
-    FUNCTION = "vace_prep"
-    CATEGORY = "video/VACE"
-    DESCRIPTION = """
-    Generates VACE control video and mask for smooth transitions between
-    two videos using context frames and frame replacement.
-    """
-
-    def vace_prep(self, video_1, video_2, context_frames, replace_frames, new_frames):
-        width, height = self._validate_dimensions(video_1, video_2)
+    @classmethod
+    def execute(cls, video_1, video_2, context_frames, replace_frames, new_frames) -> io.NodeOutput:
+        width, height = cls._validate_dimensions(video_1, video_2)
 
         v1_len = video_1.shape[0]
         v2_len = video_2.shape[0]
@@ -115,8 +116,8 @@ class WanVACEPrep(WanVACEPrepBase):
                 f"Reduce context_frames or replace_frames."
             )
 
-        v1_context, v2_context = self._extract_context(video_1, video_2, context_frames, replace_frames)
-        control_video, mask, _ = self._build_control_video_and_mask(
+        v1_context, v2_context = cls._extract_context(video_1, video_2, context_frames, replace_frames)
+        control_video, mask, _ = cls._build_control_video_and_mask(
             video_1, v1_context, v2_context, context_frames, replace_frames, new_frames, height, width
         )
 
@@ -124,60 +125,49 @@ class WanVACEPrep(WanVACEPrepBase):
         end_images = video_2[context_frames + replace_frames:]
         length = int(control_video.shape[0])
 
-        return (control_video, mask, width, height, length, start_images, end_images, context_frames, replace_frames, new_frames)
+        return io.NodeOutput(control_video, mask, width, height, length, start_images, end_images, context_frames, replace_frames, new_frames)
 
 
-class WanVACEPrepBatch(WanVACEPrepBase):
+class WanVACEPrepBatch(WanVACEPrepBase, io.ComfyNode):
     @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "video_1": ("IMAGE",),
-                "video_2": ("IMAGE",),
-                "is_first": ("BOOLEAN", {
-                    "default": False,
-                    "tooltip": "True for first iteration (index=0) - includes full beginning of video_1 in start_images."
-                }),
-                "is_last": ("BOOLEAN", {
-                    "default": False,
-                    "tooltip": "True for last iteration - includes full ending of video_2 in end_images."
-                }),
-                "context_frames": ("INT", {
-                    "default": 8,
-                    "min": 4,
-                    "max": 120,
-                    "step": 4,
-                    "tooltip": "Reference frames from each video edge for VACE interpolation (multiple of 4)."
-                }),
-                "replace_frames": ("INT", {
-                    "default": 8,
-                    "min": 0,
-                    "max": 120,
-                    "step": 4,
-                    "tooltip": "Number of frames to regenerate at each transition edge (multiple of 4)."
-                }),
-                "new_frames": ("INT", {
-                    "default": 0,
-                    "min": 0,
-                    "max": 240,
-                    "step": 4,
-                    "tooltip": "Number of new transition frames to generate, in addition to the replace_frames (multiple of 4)."
-                }),
-                "debug": ("BOOLEAN", {
-                    "default": False,
-                    "tooltip": "Log details to the console"
-                }),
-            }
-        }
+    def define_schema(cls):
+        return io.Schema(
+            node_id="WanVACEPrepBatch",
+            display_name="🪐 VACE Join (Batch)",
+            category="Wan VACE Prep/VACE",
+            description="Batch-aware VACE prep that handles first/last iteration edge cases for multi-video processing.",
+            inputs=[
+                io.Image.Input("video_1"),
+                io.Image.Input("video_2"),
+                io.Boolean.Input("is_first", default=False,
+                    tooltip="True for first iteration (index=0) - includes full beginning of video_1 in start_images."),
+                io.Boolean.Input("is_last", default=False,
+                    tooltip="True for last iteration - includes full ending of video_2 in end_images."),
+                io.Int.Input("context_frames", default=8, min=4, max=120, step=4,
+                    tooltip="Reference frames from each video edge for VACE interpolation (multiple of 4)."),
+                io.Int.Input("replace_frames", default=8, min=0, max=120, step=4,
+                    tooltip="Number of frames to regenerate at each transition edge (multiple of 4)."),
+                io.Int.Input("new_frames", default=0, min=0, max=240, step=4,
+                    tooltip="Number of new transition frames to generate, in addition to the replace_frames (multiple of 4)."),
+                io.Boolean.Input("debug", default=False, tooltip="Log details to the console"),
+            ],
+            outputs=[
+                io.Image.Output("control_video"),
+                io.Mask.Output("control_mask"),
+                io.Int.Output("width"),
+                io.Int.Output("height"),
+                io.Int.Output("length"),
+                io.Image.Output("start_images"),
+                io.Image.Output("end_images"),
+                io.Int.Output("context_frames"),
+                io.Int.Output("replace_frames"),
+                io.Int.Output("new_frames"),
+            ],
+        )
 
-    RETURN_TYPES = ("IMAGE", "MASK", "INT", "INT", "INT", "IMAGE", "IMAGE", "INT", "INT", "INT")
-    RETURN_NAMES = ("control_video", "control_mask", "width", "height", "length", "start_images", "end_images", "context_frames", "replace_frames", "new_frames")
-    FUNCTION = "vace_prep_batch"
-    CATEGORY = "video/VACE"
-    DESCRIPTION = "Batch-aware VACE prep that handles first/last iteration edge cases for multi-video processing."
-
-    def vace_prep_batch(self, video_1, video_2, context_frames, replace_frames, new_frames, is_first, is_last, debug):
-        width, height = self._validate_dimensions(video_1, video_2)
+    @classmethod
+    def execute(cls, video_1, video_2, is_first, is_last, context_frames, replace_frames, new_frames, debug) -> io.NodeOutput:
+        width, height = cls._validate_dimensions(video_1, video_2)
 
         if debug:
             print(f"\n[VACE Join Batch] === Start ===")
@@ -209,8 +199,8 @@ class WanVACEPrepBatch(WanVACEPrepBase):
                 f"(context_frames + replace_frames), but has {v2_len}"
             )
 
-        v1_context, v2_context = self._extract_context(video_1, video_2, context_frames, replace_frames)
-        control_video, mask, vace_count = self._build_control_video_and_mask(
+        v1_context, v2_context = cls._extract_context(video_1, video_2, context_frames, replace_frames)
+        control_video, mask, vace_count = cls._build_control_video_and_mask(
             video_1, v1_context, v2_context, context_frames, replace_frames, new_frames, height, width
         )
 
@@ -236,4 +226,4 @@ class WanVACEPrepBatch(WanVACEPrepBase):
             print(f"[VACE Join Batch]   VACE output: {context_frames * 2 + vace_count} frames ({context_frames * 2} context + {vace_count} generated)")
             print(f"[VACE Join Batch] === End ===")
 
-        return (control_video, mask, width, height, length, start_images, end_images, context_frames, replace_frames, new_frames)
+        return io.NodeOutput(control_video, mask, width, height, length, start_images, end_images, context_frames, replace_frames, new_frames)

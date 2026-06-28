@@ -22,11 +22,20 @@ git clone https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep
 - [VACE Extend](#vace-extend)
 - [Load Videos From Folder (Simple)](#load-videos-from-folder-simple)
 
+**Experimental:**
+
+- [VACE Inpaint](#vace-inpaint)
+- [Frame Number Overlay](#frame-number-overlay)
+- [Wan First/Middle/Last Frame to Video](#wan-firstmiddlelast-frame-to-video)
+- [VACE First/Middle/Last](#vace-firstmiddlelast)
+
 ### Video Outpaint
 
 Prepares a video for outpainting using an interactive canvas widget. Position and size an output window over your source frames. Regions outside the source become the outpaint area. Primarily designed for VACE, with support for LTX-2 outpainting via the pad color preset.
 
 Renamed from *VACE Outpaint*.
+
+> **Note:** This node is still on the legacy V1 API and is temporarily unregistered while it is migrated to Nodes 2.0 (V3), so it will not appear in the node menu yet. See [Technical Notes](#technical-notes).
 
 ![Video Outpaint Node](assets/vace-outpaint.png)
 
@@ -66,6 +75,8 @@ For smoothly joining two video clips together. Builds VACE controls for the tran
 
 | Parameter | Default | Description |
 |-|-|-|
+| video_1 | | First video in the pair (IMAGE type) |
+| video_2 | | Second video in the pair (IMAGE type) |
 | context_frames | 8 | Reference frames from each video edge that VACE uses for interpolation. These frames guide the model and are preserved in the output. Must be a multiple of 4. |
 | replace_frames | 8 | Number of frames at each transition edge to discard and regenerate. These create the actual transition blend zone. Must be a multiple of 4. |
 | new_frames | 0 | Number of completely new frames to generate between the two clips, extending the transition duration. Must be 0 or a multiple of 4. |
@@ -134,7 +145,7 @@ Establishes iteration context for batch video processing workflows. Manages file
 |-|-|-|
 | input_list | | List of video filenames to process (STRING, force input) |
 | input_dir | | Directory containing input videos |
-| project_name | . | Workflow files are created under ComfyUI/output/project_name. Use period (.) for no project name. |
+| project_name | | Workflow files are created under ComfyUI/output/project_name. Leave blank for no project name. |
 | index | 0 | Current iteration index (0-based). Valid range: 0 to (number of videos - 2) normally, or 0 to (number of videos - 1) when `make_loop=true` |
 | debug | false | Log iteration details to the console |
 | make_loop | false | Enable loop mode. Adds one extra iteration that pairs the last video with the first, creating a seamless loop. When true, `is_first` and `is_last` are always false. |
@@ -163,6 +174,7 @@ Extends a video from an arbitrary frame position. Context frames preceding the e
 
 | Parameter | Default | Description |
 |-|-|-|
+| video | | Source video frames (IMAGE type) |
 | extend_from_idx | -1 | Frame to extend from (negative counts from end, e.g., -1 = last frame) |
 | context_frames | 8 | Reference frames preceding extend_from_idx for VACE conditioning. Must be a multiple of 4. |
 | new_frames | 25 | Number of new frames to generate (must be 4n+1: 1, 5, 9, 13, 17, 21, 25...) |
@@ -181,7 +193,7 @@ Extends a video from an arbitrary frame position. Context frames preceding the e
 
 ### Load Videos From Folder (Simple)
 
-Loads all videos from a folder, concatenated into a single image batch.
+Loads all videos from a folder, concatenated into a single image batch with their audio tracks combined.
 
 Optionally connect a **[VideoHelperSuite](https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite)** *Meta Batch Manager* node to process large collections in RAM-safe chunks. If you are joining a large number of video files and running out of system memory as they concatenate, this is the solution. From the VHS Meta Batch Manager node documentation:
 
@@ -210,13 +222,14 @@ See the VHS Meta Batch Manager node documentation for more information.
 | Output | Description |
 |-|-|
 | images | Concatenated image batch ready for video creation |
+| audio | Combined audio track from all loaded videos. Disabled (empty) if any video lacks audio. |
 
 ---
 ## Experimental
 
 Stuff here is new and has not been thoroughly tested. Inputs, outputs, and behavior may change in future releases without notice.
 
-### Wan VACE Inpaint
+### VACE Inpaint
 
 Prepares control video and mask for inpainting. Connect the output to `WanVaceToVideo.control_video` / `control_masks`; use `WanVaceToVideo.reference_image` separately if you need a reference frame.
 
@@ -263,7 +276,7 @@ Burns a frame number label into every frame of an IMAGE batch as a text overlay.
 
 ---
 
-### Wan First/Last/Middle Frame to Video
+### Wan First/Middle/Last Frame to Video
 
 Based on native ComfyUI WanFirstLastFrameToVideo, generates conditioning latents from optional start, end, and middle reference images using a VAE and clip vision model. 
 
@@ -279,12 +292,12 @@ Based on native ComfyUI WanFirstLastFrameToVideo, generates conditioning latents
 | length | 81 | Frame count (4n+1 pattern) |
 | batch_size | 1 | Number of parallel generations |
 | start_image | *(optional)* | Reference image for the beginning frames |
-| end_image | *(optional)* | Reference image for the ending frames |
 | middle_image | *(optional)* | Reference image for middle frames |
 | middle_frame | 0.5 | Position of middle reference as fraction of total length |
+| end_image | *(optional)* | Reference image for the ending frames |
 | clip_vision_start_image | *(optional)* | CLIP vision output for start image guidance |
-| clip_vision_end_image | *(optional)* | CLIP vision output for end image guidance |
 | clip_vision_middle_image | *(optional)* | CLIP vision output for middle image guidance |
+| clip_vision_end_image | *(optional)* | CLIP vision output for end image guidance |
 
 **Outputs:**
 
@@ -328,7 +341,7 @@ Builds a VACE control video and mask from optional first, middle, and last frame
 
 **Class names vs. display names.** Some internal class names (e.g., `WanVACEPrep`) don't match the current display names (e.g., "VACE Join"). This is intentional: renaming classes would break existing workflows that reference them. Once ComfyUI's node renaming API is stable, a refactoring pass will align them.
 
-**Nodes 2.0 renderer.** These nodes have not been tested under ComfyUI's Nodes 2.0 renderer and may or may not work correctly with it. Until ComfyUI publishes documentation for node developers, no effort will be spent on ensuring Nodes 2.0 compatibility or stability.
+**Nodes 2.0 / V3 API.** All nodes except the Video Outpaint node have been migrated to ComfyUI's V3 (Nodes 2.0) node API. The Video Outpaint node is still on the legacy V1 API and is not registered for the moment; it will be migrated soon. The interactive outpaint canvas widget has not yet been verified under the Nodes 2.0 (Vue) renderer.
 
 ---
 
