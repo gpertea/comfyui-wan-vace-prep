@@ -136,29 +136,44 @@ function initLayout(st, wrapEl) {
     st.cr = srcToCr(def, st.sf, st.scale);
     st.cropAR = st.cr.w / st.cr.h;
     st.initialized = true;
+    // If a restored crop is stashed (configure ran before geometry was ready),
+    // apply it now that sf/scale exist — overriding the default above. Consumed
+    // exactly once: applyPendingCrop clears it, so reset/resize paths see none.
+    applyPendingCrop(st);
     return true;
 }
 
-/** Restore crop rect from the saved crop_state widget value (workflow load).
- *  @param {string} [overrideVal] - use this value instead of reading the widget
- *    (pass the value latched at onConfigure time to avoid rAF/configure races). */
-function restoreCropFromWidgets(st, widgets, overrideVal) {
-    const val = overrideVal !== undefined ? overrideVal : (widgets.cropState?.value ?? "");
-    if (!val) return;
+/** Parse a crop_state widget string to source-space fields, or null if invalid.
+ *  Shape: "x,y,w,h[,outW,outH[,arLocked]]" in source pixels. */
+function parseCropState(val) {
+    if (!val) return null;
     const parts = val.split(",").map(Number);
-    if (parts.length < 4 || parts.some(isNaN)) return;
-    const [cx, cy, cw, ch] = parts;
-    if (cw >= GRID && ch >= GRID) {
-        st.cr = srcToCr({ x: cx, y: cy, w: cw, h: ch }, st.sf, st.scale);
-        st.cropAR = cw / ch;
-    }
-    if (parts.length >= 6) {
-        st.outW = parts[4] || 0;
-        st.outH = parts[5] || 0;
+    if (parts.length < 4 || parts.slice(0, 4).some(isNaN)) return null;
+    const [x, y, w, h] = parts;
+    if (w < GRID || h < GRID) return null;
+    const out = { x, y, w, h, outW: 0, outH: 0, arLocked: true };
+    if (parts.length >= 6 && !isNaN(parts[4]) && !isNaN(parts[5])) {
+        out.outW = parts[4] || 0;
+        out.outH = parts[5] || 0;
     }
     if (parts.length >= 7 && !isNaN(parts[6])) {
-        st.arLocked = parts[6] !== 0;
+        out.arLocked = parts[6] !== 0;
     }
+    return out;
+}
+
+/** Apply a stashed source-space crop (st.pendingCrop) into canvas-space st.cr.
+ *  Requires st.sf / st.scale to be valid (i.e. called at/after a layout).
+ *  Consumes pendingCrop: it is cleared so it is applied exactly once. */
+function applyPendingCrop(st) {
+    const p = st.pendingCrop;
+    if (!p) return;
+    st.cr = srcToCr({ x: p.x, y: p.y, w: p.w, h: p.h }, st.sf, st.scale);
+    st.cropAR = p.w / p.h;
+    st.outW = p.outW;
+    st.outH = p.outH;
+    st.arLocked = p.arLocked;
+    st.pendingCrop = undefined;
 }
 
 // ── DOM builder ───────────────────────────────────────────────────────
@@ -494,7 +509,7 @@ function syncWidgets(st, widgets, node) {
 
 function setArLocked(st, dom, locked) {
     st.arLocked = locked;
-    if (locked) st.cropAR = st.cr.w / st.cr.h;
+    if (locked && st.cr.w > 0 && st.cr.h > 0) st.cropAR = st.cr.w / st.cr.h;
     dom.arBtn.textContent    = locked ? "🔒" : "🔓";
     dom.arBtn.style.border   = `1px solid ${locked ? "#99c0ee" : "#444"}`;
     dom.arBtn.style.background = locked ? "#1a3a5a" : "#2a2a2a";
@@ -512,17 +527,28 @@ async function fetchInfo(nodeId) {
     } catch { return null; }
 }
 
+/** Revoke a frame-image URL if it is a blob: URL (data: URLs need no revoke). */
+function revokeIfBlob(url) {
+    if (url && url.startsWith("blob:")) URL.revokeObjectURL(url);
+}
+
+/** Swap dom.frameImg.src, revoking the previous src if it was a blob: URL.
+ *  Centralises blob lifecycle so neither scrubbing (blob) nor post-run refresh
+ *  (data:) leaks the URL it replaces. */
+function setFrameImg(dom, src) {
+    const old = dom.frameImg.src;
+    dom.frameImg.src = src;
+    if (old !== src) revokeIfBlob(old);
+}
+
 async function fetchFrame(nodeId, idx, dom) {
     try {
         const r = await fetch(`${API_PREFIX}/frame?node_id=${nodeId}&idx=${idx}`);
         if (!r.ok) return;
         const blob = await r.blob();
-        const url  = URL.createObjectURL(blob);
-        const old  = dom.frameImg.src;
-        dom.frameImg.src = url;
+        setFrameImg(dom, URL.createObjectURL(blob));
         dom.frameImg.style.display = "block";
         dom.noDataMsg.style.display = "none";
-        if (old && old.startsWith("blob:")) URL.revokeObjectURL(old);
     } catch { /* ignore */ }
 }
 
@@ -828,23 +854,66 @@ function applyMaskColorToDOM(st, dom) {
     dom.customColorInput.value = st.customColor;
 }
 
+/** Reconcile the mask-color half of state + DOM from the hidden widgets. */
+function refreshColorFromWidgets(st, dom, widgets) {
+    if (widgets.maskColor)   st.maskColor   = widgets.maskColor.value;
+    if (widgets.customColor) st.customColor = widgets.customColor.value;
+    applyMaskColorToDOM(st, dom);
+}
+
+/** Convergent reconcile: read the three canvas-managed widget values and make
+ *  st + DOM match them. Safe to call any time, any number of times, regardless
+ *  of whether geometry is ready yet — replaces the old onConfigure value-latching
+ *  + ordered-replay dance. Idempotent: it only ever writes widget-derived state,
+ *  never DOM-derived state, so it cannot reintroduce the sizing feedback loop. */
+function refreshFromWidgets(st, dom, widgets) {
+    const parsed = parseCropState(widgets.cropState?.value ?? "");
+    if (parsed) {
+        st.pendingCrop = parsed;
+        // Apply immediately once geometry exists; otherwise the next successful
+        // initLayout consumes the stash. Either way crop lands exactly once.
+        if (st.initialized) applyPendingCrop(st);
+    }
+    refreshColorFromWidgets(st, dom, widgets);
+    // Sync the 🔒/🔓 button to the (possibly restored) lock state. Only meaningful
+    // once st.cr is valid; pre-init the button stays at its default until layout.
+    if (st.initialized) setArLocked(st, dom, st.arLocked);
+}
+
 // ── Resize observer ───────────────────────────────────────────────────
+
+/** Feature-detect the undocumented DOM-widget sizing contract. On the first valid
+ *  layout, if the framework rendered dom.root materially shorter than MIN_H, the
+ *  sizing options were not honored (likely an incompatible frontend). Warn ONCE
+ *  and degrade visibly — never write a height back, which would risk the feedback
+ *  loop this whole design avoids. One-shot via st._warnedSizing; offscreen
+ *  (height 0) samples are ignored so the latch happens on the first real layout. */
+function warnIfSizingIgnored(st, dom) {
+    if (st._warnedSizing) return;
+    const h = dom.root.offsetHeight;
+    if (h <= 0) return;            // not laid out yet — not a valid sample
+    st._warnedSizing = true;
+    if (h < st.minH - 8) {
+        console.warn(
+            `[VACEOutpaint] node ${st.nodeId ?? "?"}: frontend did not honor the ` +
+            `DOM-widget sizing options (rendered ${h}px < expected ${st.minH}px). ` +
+            `Canvas may be clipped — likely an incompatible ComfyUI frontend version.`
+        );
+    }
+}
 
 function setupResizeObserver(st, dom, widgets) {
     const ro = new ResizeObserver(() => {
         if (dom.wrap.clientHeight <= 0 || dom.wrap.clientWidth <= 0) return;
+        warnIfSizingIgnored(st, dom);
 
         if (!st.initialized) {
             // Deferred initialization: the node was offscreen (clientWidth=0) when the
-            // double-rAF fired so initLayout failed and we skipped the full init sequence.
-            // Complete it now that the wrap has a valid size.
+            // rAF fired so initLayout failed and we skipped the full init sequence.
+            // Complete it now that the wrap has a valid size. initLayout applies any
+            // stashed pendingCrop; refreshFromWidgets reconciles colors + AR button.
             if (!initLayout(st, dom.wrap)) return;
-            restoreCropFromWidgets(st, widgets, st._latchedCropState);
-            st._latchedCropState = undefined;
-            if (st._latchedMaskColor)   { st.maskColor   = st._latchedMaskColor;   st._latchedMaskColor   = undefined; }
-            if (st._latchedCustomColor) { st.customColor = st._latchedCustomColor; st._latchedCustomColor = undefined; }
-            applyMaskColorToDOM(st, dom);
-            setArLocked(st, dom, st.arLocked);
+            refreshFromWidgets(st, dom, widgets);
             if (st.outW < GRID || st.outH < GRID) {
                 const d = defaultOut(st); st.outW = d.w; st.outH = d.h;
             } else {
@@ -908,18 +977,28 @@ app.registerExtension({
             const CTRL_H = 185; // scrubber + size row + presets + snap + out+mask row + gaps
             const MIN_W   = 520;
             const MIN_H   = CANVAS_H + CTRL_H;
+            st.minH = MIN_H;  // read by warnIfSizingIgnored
 
             // V3 sizing contract: the framework sizes the DOM widget element from the
-            // value returned by getMinHeight (via computeLayoutSize) and writes an explicit
-            // pixel height onto dom.root. dom.root is a flex column, so dom.wrap (flex:1)
-            // absorbs any height beyond the fixed-height controls, and the ResizeObserver
-            // on dom.wrap re-lays-out the canvas. We deliberately do NOT set dom.wrap's
-            // height or derive node height from the DOM: that bidirectional coupling is
-            // what caused runaway vertical growth on horizontal drag.
+            // value returned by getMinHeight/getHeight (via computeLayoutSize) and writes an
+            // explicit pixel height onto dom.root. dom.root is a flex column, so dom.wrap
+            // (flex:1) absorbs any height beyond the fixed-height controls, and the
+            // ResizeObserver on dom.wrap re-lays-out the canvas. We deliberately do NOT set
+            // dom.wrap's height or derive node height from the DOM: that bidirectional
+            // coupling is what caused runaway vertical growth on horizontal drag.
+            //
+            // The contract is undocumented (reverse-engineered from the frontend bundle), so
+            // this is belt-and-suspenders: getMinHeight + getHeight + the CSS-var fallback are
+            // all read the same unidirectional way and none derive from the DOM, so none can
+            // reintroduce the feedback loop. warnIfSizingIgnored() flags at runtime if a
+            // frontend version stops honoring them. (getMaxHeight is intentionally omitted so
+            // "drag taller → bigger canvas" is never capped.)
+            dom.root.style.setProperty("--comfy-widget-min-height", MIN_H + "px");
             const domWidget = node.addDOMWidget("vace_outpaint_canvas", "customvideo", dom.root, {
                 serialize: false,
                 hideOnZoom: false,
                 getMinHeight: () => MIN_H,
+                getHeight: () => MIN_H,
             });
 
             node.resizable = true;
@@ -940,19 +1019,15 @@ app.registerExtension({
                 for (const w of toHide) { node.widgets.push(w); w.computeSize = () => [0, -4]; w.type = "hidden"; w.hidden = true; }
             }
 
-            // Latch crop_state at onConfigure time so the rAF callback always has
-            // the post-restore value.  Without this, the double-rAF can fire before
-            // node.configure() runs the positional widget restore in some loading
-            // paths, leaving crop_state.value as the empty default.
-            // Also apply mask/custom color immediately so that even if the rAF fires
-            // first, st.maskColor and st.customColor are already correct by the time
-            // any downstream code reads them.
+            // Reconcile from the restored widget values once node.configure() has run
+            // the positional widget restore. refreshFromWidgets is ordering-independent:
+            // if geometry is not ready yet it stashes the crop as st.pendingCrop for the
+            // next successful layout to consume; if it is ready it applies immediately.
+            // This replaces the old value-latching + ordered-replay dance.
             const origOnConfigure = node.onConfigure;
             node.onConfigure = function (info) {
                 if (origOnConfigure) origOnConfigure.call(this, info);
-                if (widgets.cropState)   st._latchedCropState   = widgets.cropState.value;
-                if (widgets.maskColor)   { st.maskColor         = widgets.maskColor.value;   st._latchedMaskColor   = undefined; }
-                if (widgets.customColor) { st.customColor       = widgets.customColor.value; st._latchedCustomColor = undefined; }
+                refreshFromWidgets(st, dom, widgets);
             };
 
             // Shared helper: apply fetched frame data to the widget.
@@ -964,82 +1039,87 @@ app.registerExtension({
                 st.srcH = data.height;
                 st.frameCount = data.frame_count;
                 initLayout(st, dom.wrap);
+                // Crop precedence (unchanged): (1) preserve the live in-view crop across
+                // the source-dimension change, else (2) restore from the saved widget
+                // value, else (3) fall through to the default set by initLayout. We do NOT
+                // call refreshFromWidgets here: it would re-parse crop_state and clobber the
+                // freshly reprojected (1) crop with the stale saved coords.
                 if (prevSrc) {
                     const s = clampToValid(quantizeSrc(prevSrc), st.srcW, st.srcH);
                     st.cr = srcToCr(s, st.sf, st.scale);
                     st.cropAR = s.w / s.h;
                 } else if (hadCrop) {
-                    restoreCropFromWidgets(st, widgets);
+                    const p = parseCropState(val);
+                    if (p) { st.pendingCrop = p; applyPendingCrop(st); }
                 }
                 // Only set default output resolution if the user hasn't configured one.
                 if (st.outW < GRID || st.outH < GRID) {
                     const d = defaultOut(st); st.outW = d.w; st.outH = d.h;
                 }
-                dom.frameImg.src = "data:image/jpeg;base64," + data.frame;
+                setFrameImg(dom, "data:image/jpeg;base64," + data.frame);
                 dom.frameImg.style.display = "block";
                 dom.noDataMsg.style.display = "none";
                 dom.scrubber.max = Math.max(0, data.frame_count - 1);
                 dom.scrubber.value = 0;
                 dom.scrubIdx.textContent = "0 / " + Math.max(0, data.frame_count - 1);
-                // Re-read mask color from the hidden widget (onConfigure may not have
-                // run yet, or the rAF may have written stale state via syncWidgets).
-                if (widgets.maskColor)   st.maskColor   = widgets.maskColor.value;
-                if (widgets.customColor) st.customColor = widgets.customColor.value;
+                // Reconcile only the color half from the hidden widgets (crop already
+                // resolved above), then re-sync the AR button in case (2) restored a
+                // different lock state.
+                refreshColorFromWidgets(st, dom, widgets);
+                setArLocked(st, dom, st.arLocked);
                 fitCropInView(st, dom);
                 render(st, dom);
                 syncWidgets(st, widgets, node);
             };
 
             // Deferred init so the DOM widget has been laid out and has a real width.
+            // A single rAF suffices: geometry-readiness is uniformly owned by the
+            // ResizeObserver (which delivers an initial callback and handles the
+            // offscreen → visible deferred-init case), so a second "wait for width"
+            // frame is redundant.
             requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    const nodeId = String(node.id);
+                const nodeId = String(node.id);
+                st.nodeId = nodeId;  // for warnIfSizingIgnored's message
 
-                    // Attempt layout now. This may fail (return false) if the node is
-                    // offscreen and ComfyUI has not given the DOM widget a real width yet.
-                    // If it fails, we do NOT return early — interactions and the
-                    // ResizeObserver are always wired so that the ResizeObserver can
-                    // complete initialization the first time the node becomes visible.
-                    if (initLayout(st, dom.wrap)) {
-                        // Use the value latched at onConfigure time if available.
-                        restoreCropFromWidgets(st, widgets, st._latchedCropState);
-                        st._latchedCropState = undefined;
-                        // Restore mask color state from saved widget values.
-                        if (st._latchedMaskColor)   { st.maskColor   = st._latchedMaskColor;   st._latchedMaskColor   = undefined; }
-                        if (st._latchedCustomColor) { st.customColor = st._latchedCustomColor; st._latchedCustomColor = undefined; }
-                        applyMaskColorToDOM(st, dom);
-                        setArLocked(st, dom, st.arLocked);
-                        if (st.outW < GRID || st.outH < GRID) {
-                            const d = defaultOut(st); st.outW = d.w; st.outH = d.h;
-                        } else {
-                            syncOutToAR(st);
-                        }
-                        fitCropInView(st, dom);
+                // Attempt layout now. This may fail (return false) if the node is
+                // offscreen and ComfyUI has not given the DOM widget a real width yet.
+                // If it fails, we do NOT return early — interactions and the
+                // ResizeObserver are always wired so that the ResizeObserver can
+                // complete initialization the first time the node becomes visible.
+                if (initLayout(st, dom.wrap)) {
+                    // initLayout applied any stashed pendingCrop; reconcile colors + AR button.
+                    refreshFromWidgets(st, dom, widgets);
+                    if (st.outW < GRID || st.outH < GRID) {
+                        const d = defaultOut(st); st.outW = d.w; st.outH = d.h;
+                    } else {
+                        syncOutToAR(st);
                     }
+                    fitCropInView(st, dom);
+                    warnIfSizingIgnored(st, dom);
+                }
 
-                    // Always wire interactions and set up the ResizeObserver so that
-                    // nodes which start offscreen become fully functional once visible.
-                    wireInteractions(st, dom, widgets, node, nodeId);
-                    render(st, dom);
-                    const ro = setupResizeObserver(st, dom, widgets);
+                // Always wire interactions and set up the ResizeObserver so that
+                // nodes which start offscreen become fully functional once visible.
+                wireInteractions(st, dom, widgets, node, nodeId);
+                render(st, dom);
+                const ro = setupResizeObserver(st, dom, widgets);
 
-                    // Re-display frames after every successful workflow run.
-                    // execution_success fires once the whole graph has finished,
-                    // at which point Python has populated the frame cache for our node.
-                    const onExecutionSuccess = async () => {
-                        const data = await fetchInfo(nodeId);
-                        if (data) applyFrameData(data, true);
-                    };
-                    api.addEventListener("execution_success", onExecutionSuccess);
-                    node._outpaintCleanup = () => {
-                        api.removeEventListener("execution_success", onExecutionSuccess);
-                        ro.disconnect();
-                    };
+                // Re-display frames after every successful workflow run.
+                // execution_success fires once the whole graph has finished,
+                // at which point Python has populated the frame cache for our node.
+                const onExecutionSuccess = async () => {
+                    const data = await fetchInfo(nodeId);
+                    if (data) applyFrameData(data, true);
+                };
+                api.addEventListener("execution_success", onExecutionSuccess);
+                node._outpaintCleanup = () => {
+                    api.removeEventListener("execution_success", onExecutionSuccess);
+                    ro.disconnect();
+                };
 
-                    // Also try to recover frames cached from a prior server session.
-                    fetchInfo(nodeId).then(data => {
-                        if (data) applyFrameData(data, true);
-                    });
+                // Also try to recover frames cached from a prior server session.
+                fetchInfo(nodeId).then(data => {
+                    if (data) applyFrameData(data, true);
                 });
             });
 
@@ -1047,6 +1127,7 @@ app.registerExtension({
             const origOnRemoved = node.onRemoved;
             node.onRemoved = function () {
                 node._outpaintCleanup?.();
+                revokeIfBlob(dom.frameImg.src);  // revoke the final frame blob (if any)
                 if (origOnRemoved) origOnRemoved.call(this);
             };
 

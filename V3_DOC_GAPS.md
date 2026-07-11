@@ -49,7 +49,9 @@ option, no CSS var, and no instance override that the Vue layout honours (wrappi
 loses to the drag controller and glitches the wires; overriding `node.computeSize` only
 affects the legacy LiteGraph resize path, which the Vue renderer ignores. We gave up on a
 hard floor and contained the controls with CSS (`overflow:hidden` on the root, wrap/scroll
-on rows) instead.
+on rows) instead. (Of these, only the `onResize` width-clamp was actually shipped and then
+reverted; the others were assessed from reading the compiled bundle and rejected before
+shipping.)
 
 **Would fix it:** Add a `getMinWidth` option (and `--comfy-widget-min-width` CSS var) to DOM
 widgets, symmetric with the height handling that already exists.
