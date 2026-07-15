@@ -2,6 +2,8 @@
 
 A small collection of ComfyUI nodes for common video tasks. Primarily designed for Wan VACE, with LTX-2 outpainting support.
 
+**Note:** All code has been migrated to ComfyUI's Nodes 2.0 (V3) API. Nodes are still 100% compatible with the legacy ComfyUI renderer. There should be no noticeable changes in behavior, but please [report any problems](https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep/issues) you encounter. `v1.0.25` is the last legacy (pre-V3) release.
+
 ## Quick Start
 
 **Install via ComfyUI Manager:** Search for "Wan VACE Prep"
