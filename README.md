@@ -15,7 +15,7 @@ git clone https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep
 
 ## Nodes
 
-- [Video Outpaint](#video-outpaint) *(formerly VACE Outpaint*)
+- [Video Outpaint](#video-outpaint) *(formerly VACE Outpaint)*
 - [VACE Join](#vace-join)
 - [VACE Join (Batch)](#vace-join-batch)
 - [VACE Batch Context](#vace-batch-context)
@@ -61,6 +61,14 @@ Renamed from *VACE Outpaint*.
 | length | Frame count |
 
 https://github.com/user-attachments/assets/a233832a-6630-4e7b-8d05-9e048d2e97a4
+
+**This node may be fragile under Nodes 2.0 / V3.** ComfyUI has not documented any method for building a dynamic UI like this canvas widget, so its behavior had to be reverse-engineered from the source and the minified frontend bundle. These are the most likely things to break across ComfyUI releases:
+
+- **Video Outpaint canvas sizing** (`web/vace_outpaint.js`). The DOM-widget sizing contract (`getMinHeight` feeding `DOMWidgetImpl.computeLayoutSize`, framework-driven height, flex-column fill) is not documented. There is also no supported way to set a minimum node *width* for a DOM widget, so the controls are contained with CSS instead of a hard floor.
+- **Custom socket types.** The `io.Custom("VHS_BatchManager")` input on Load Videos From Folder (for the optional VideoHelperSuite Meta Batch Manager) uses an undocumented pattern.
+- **List-mode inputs.** VACE Batch Context relies on the `is_input_list` calling convention (every input delivered as a list), whose semantics are not spelled out in the V3 docs.
+
+ComfyUI ships essentially no reference for the V3 `io.*` type catalog or these widget/execution contracts; the only authoritative source is the (underscore-private) `comfy_api/latest/_io.py` and the compiled frontend.
 
 ---
 
@@ -338,14 +346,6 @@ Builds a VACE control video and mask from optional first, middle, and last frame
 **4n+1 frame rule.** The Wan model generates 4n+1 frames at a time. If you request a different count, it silently rounds down to the nearest 4n+1. For this reason, parameters are restricted to multiples of 4 or 4n+1, and when necessary the nodes add +1 to the generated frame count.
 
 **Class names vs. display names.** Some internal class names (e.g., `WanVACEPrep`) don't match the current display names (e.g., "VACE Join"). This is intentional: renaming classes would break existing workflows that reference them. Once ComfyUI's node renaming API is stable, a refactoring pass will align them.
-
-**Nodes 2.0 / V3 API Reverse-engineered behavior (may be fragile).** Parts of the V3 migration rely on ComfyUI behavior that is undocumented in the public API, so they had to be reverse-engineered from the source and the minified frontend bundle. These are the most likely things to break across ComfyUI releases:
-
-- **Video Outpaint canvas sizing** (`web/vace_outpaint.js`). The DOM-widget sizing contract (`getMinHeight` feeding `DOMWidgetImpl.computeLayoutSize`, framework-driven height, flex-column fill) is not documented. There is also no supported way to set a minimum node *width* for a DOM widget, so the controls are contained with CSS instead of a hard floor.
-- **Custom socket types.** The `io.Custom("VHS_BatchManager")` input on Load Videos From Folder (for the optional VideoHelperSuite Meta Batch Manager) uses an undocumented pattern.
-- **List-mode inputs.** VACE Batch Context relies on the `is_input_list` calling convention (every input delivered as a list), whose semantics are not spelled out in the V3 docs.
-
-ComfyUI ships essentially no reference for the V3 `io.*` type catalog or these widget/execution contracts; the only authoritative source is the (underscore-private) `comfy_api/latest/_io.py` and the compiled frontend. The full running list of gaps that cost time during migration is in [`V3_DOC_GAPS.md`](V3_DOC_GAPS.md).
 
 ---
 
