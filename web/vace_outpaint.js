@@ -198,7 +198,7 @@ function buildUI() {
     const root = mkEl("div", "width:100%;box-sizing:border-box;padding:6px 8px 10px;font-family:system-ui,sans-serif;font-size:12px;color:#ccc;display:flex;flex-direction:column;overflow:hidden;");
 
     // ── Canvas area ──
-    const wrap = mkEl("div", `position:relative;flex:1 1 auto;min-height:${CANVAS_H}px;background:#181818;border:1px solid #3a3a3a;border-radius:6px;overflow:hidden;user-select:none;touch-action:none;cursor:default;`);
+    const wrap = mkEl("div", `position:relative;flex:1 1 auto;min-height:${CANVAS_H}px;background:#181818;border:1px solid #3a3a3a;border-radius:6px;overflow:hidden;user-select:none;touch-action:none;cursor:grab;`);
     // Opt into ComfyUI's Nodes 2.0 wheel-capture contract: under the Vue renderer,
     // TransformPane installs a capture-phase wheel forwarder that would otherwise steal
     // our wheel events to zoom the graph. Marking wrap data-capture-wheel="true" makes
@@ -277,7 +277,7 @@ function buildUI() {
         "position:absolute;bottom:6px;left:7px;padding:2px 6px;font-size:10px;font-family:monospace;" +
         "background:rgba(0,0,0,0.55);color:#888;border:1px solid #444;border-radius:3px;cursor:pointer;z-index:10;"
     );
-    zoomIndicator.title = "Click to reset zoom (scroll to zoom, middle-drag to pan)";
+    zoomIndicator.title = "Click to reset zoom (scroll to zoom, drag empty area to pan)";
     zoomIndicator.textContent = "100%";
     wrap.appendChild(zoomIndicator);
 
@@ -708,8 +708,23 @@ function wireInteractions(st, dom, widgets, node, nodeId) {
         render(st, dom);
     });
 
-    // ── Pan (middle-click drag) ──
+    // ── Pan (left-drag on empty area, or middle-drag) ──
+    // Left-drag is the primary pan gesture: under Nodes 2.0 the Vue renderer's
+    // TransformPane installs capture-phase pointer forwarders that grab all
+    // middle-button events to pan the graph, and unlike wheel there is no opt-out
+    // contract. Left-button events pass through untouched under both renderers.
+    // Middle-drag is kept as a secondary gesture for the legacy renderer.
     let pan = null;
+    const startPan = (e) => {
+        pan = { sx: e.clientX, sy: e.clientY, ox: st.view.panX, oy: st.view.panY };
+        wrap.setPointerCapture(e.pointerId);
+        wrap.style.cursor = "grabbing";
+        e.preventDefault();
+    };
+    const endPan = () => {
+        pan = null;
+        wrap.style.cursor = "grab";
+    };
 
     // ── Pointer drag/resize ──
     let drag = null;
@@ -719,11 +734,9 @@ function wireInteractions(st, dom, widgets, node, nodeId) {
         // Fallback focus for browsers that don't focus a tabindex div on hover, so the
         // Nodes 2.0 wheel-capture contract keeps deferring to us after a click.
         focusForWheel();
-        // Middle-click → pan
+        // Middle-click → pan (legacy renderer only; Nodes 2.0 intercepts it to pan the graph)
         if (e.button === 1) {
-            pan = { sx: e.clientX, sy: e.clientY, ox: st.view.panX, oy: st.view.panY };
-            wrap.setPointerCapture(e.pointerId);
-            e.preventDefault();
+            startPan(e);
             return;
         }
 
@@ -737,6 +750,11 @@ function wireInteractions(st, dom, widgets, node, nodeId) {
         } else if (inCropBox) {
             drag = { type: "move", sx: wc.x, sy: wc.y, sb: { ...st.cr } };
             e.preventDefault();
+        } else if (e.button === 0 && !e.target.closest("button")) {
+            // Left-drag on empty editor area (bare canvas or the frame outside the
+            // crop box) pans the internal view.
+            startPan(e);
+            return;
         }
         if (drag) wrap.setPointerCapture(e.pointerId);
     });
@@ -805,7 +823,7 @@ function wireInteractions(st, dom, widgets, node, nodeId) {
     });
 
     wrap.addEventListener("pointerup", () => {
-        if (pan)  { pan  = null; return; }
+        if (pan)  { endPan(); return; }
         if (drag) {
             const type = drag.type;
             drag = null;
@@ -830,7 +848,7 @@ function wireInteractions(st, dom, widgets, node, nodeId) {
             syncWidgets(st, widgets, node);
         }
     });
-    wrap.addEventListener("pointercancel", () => { pan = null; drag = null; });
+    wrap.addEventListener("pointercancel", () => { endPan(); drag = null; });
 
     // ── Keyboard nudge ──
     wrap.tabIndex = 0;
