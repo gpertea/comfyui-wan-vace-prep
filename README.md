@@ -68,8 +68,6 @@ https://github.com/user-attachments/assets/a233832a-6630-4e7b-8d05-9e048d2e97a4
 
 - **Video Outpaint canvas sizing** (`web/vace_outpaint.js`). The DOM-widget sizing contract (`getMinHeight` feeding `DOMWidgetImpl.computeLayoutSize`, framework-driven height, flex-column fill) is not documented. There is also no supported way to set a minimum node *width* for a DOM widget, so the controls are contained with CSS instead of a hard floor.
 - **Video Outpaint scroll-to-zoom** (`web/vace_outpaint.js`). Under Nodes 2.0 the Vue renderer's `TransformPane` installs a capture-phase wheel forwarder that hijacks the wheel to zoom the graph. The editor opts out via the undocumented `data-capture-wheel="true"` contract plus focusing the canvas on hover; if that attribute/focus check changes, plain scroll would zoom the graph instead of the crop preview.
-- **Custom socket types.** The `io.Custom("VHS_BatchManager")` input on Load Videos From Folder (for the optional VideoHelperSuite Meta Batch Manager) uses an undocumented pattern.
-- **List-mode inputs.** VACE Batch Context relies on the `is_input_list` calling convention (every input delivered as a list), whose semantics are not spelled out in the V3 docs.
 
 ComfyUI ships essentially no reference for the V3 `io.*` type catalog or these widget/execution contracts; the only authoritative source is the (underscore-private) `comfy_api/latest/_io.py` and the compiled frontend.
 
@@ -171,6 +169,8 @@ Establishes iteration context for batch video processing workflows. Manages file
 | is_last | True if this is the last iteration. Always false when `make_loop=true`. |
 | assemble_video | True on the final iteration. Used to gate the assembly step. Equivalent to `is_last` when `make_loop=false`; fires on the loop-closing iteration when `make_loop=true`. |
 
+**This node may be fragile under Nodes 2.0 / V3.** It relies on the `is_input_list` calling convention (every input delivered as a list rather than a single value) to drive the batch iteration logic, and this calling convention's semantics are not spelled out in the V3 docs. ComfyUI ships essentially no reference for these execution contracts; the only authoritative source is the (underscore-private) `comfy_api/latest/_io.py` and the compiled frontend.
+
 ---
 
 ### VACE Extend
@@ -232,6 +232,8 @@ See the VHS Meta Batch Manager node documentation for more information.
 |-|-|
 | images | Concatenated image batch ready for video creation |
 | audio | Combined audio track from all loaded videos. Disabled (empty) if any video lacks audio. |
+
+**This node may be fragile under Nodes 2.0 / V3.** The optional `meta_batch` input uses `io.Custom("VHS_BatchManager")` to accept a VideoHelperSuite Meta Batch Manager connection, and this custom-socket-type pattern is undocumented. ComfyUI ships essentially no reference for the V3 `io.*` type catalog; the only authoritative source is the (underscore-private) `comfy_api/latest/_io.py` and the compiled frontend.
 
 ---
 ## Experimental
