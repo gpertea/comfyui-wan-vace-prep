@@ -199,6 +199,12 @@ function buildUI() {
 
     // ── Canvas area ──
     const wrap = mkEl("div", `position:relative;flex:1 1 auto;min-height:${CANVAS_H}px;background:#181818;border:1px solid #3a3a3a;border-radius:6px;overflow:hidden;user-select:none;touch-action:none;cursor:default;`);
+    // Opt into ComfyUI's Nodes 2.0 wheel-capture contract: under the Vue renderer,
+    // TransformPane installs a capture-phase wheel forwarder that would otherwise steal
+    // our wheel events to zoom the graph. Marking wrap data-capture-wheel="true" makes
+    // that forwarder defer to us (see the focus handling in wireInteractions) so plain
+    // scroll zooms the editor. Inert under the legacy renderer. tabIndex is set below.
+    wrap.dataset.captureWheel = "true";
 
     // Source frame (holds actual frame image)
     const sfEl = mkEl("div", "position:absolute;background:#222;overflow:hidden;border:1px solid #333;");
@@ -669,6 +675,17 @@ function wireInteractions(st, dom, widgets, node, nodeId) {
         fetchFrame(nodeId, idx, dom);
     });
 
+    // Focus wrap on hover so ComfyUI's Nodes 2.0 wheel-capture contract defers to us
+    // (the capture forwarder only yields when data-capture-wheel="true" *contains*
+    // document.activeElement). Don't yank focus out of a field the user is editing.
+    const focusForWheel = () => {
+        const ae = document.activeElement;
+        const editing = ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" ||
+                               ae.tagName === "SELECT" || ae.isContentEditable);
+        if (!editing && ae !== wrap) wrap.focus({ preventScroll: true });
+    };
+    wrap.addEventListener("pointerenter", focusForWheel);
+
     // ── Zoom (scroll wheel) ──
     wrap.addEventListener("wheel", e => {
         e.preventDefault();
@@ -699,6 +716,9 @@ function wireInteractions(st, dom, widgets, node, nodeId) {
     const MIN_DRAG_PX = GRID;
 
     wrap.addEventListener("pointerdown", e => {
+        // Fallback focus for browsers that don't focus a tabindex div on hover, so the
+        // Nodes 2.0 wheel-capture contract keeps deferring to us after a click.
+        focusForWheel();
         // Middle-click → pan
         if (e.button === 1) {
             pan = { sx: e.clientX, sy: e.clientY, ox: st.view.panX, oy: st.view.panY };

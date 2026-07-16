@@ -67,6 +67,7 @@ https://github.com/user-attachments/assets/a233832a-6630-4e7b-8d05-9e048d2e97a4
 **This node may be fragile under Nodes 2.0 / V3.** ComfyUI has not documented any method for building a dynamic UI like this canvas widget, so its behavior had to be reverse-engineered from the source and the minified frontend bundle. These are the most likely things to break across ComfyUI releases:
 
 - **Video Outpaint canvas sizing** (`web/vace_outpaint.js`). The DOM-widget sizing contract (`getMinHeight` feeding `DOMWidgetImpl.computeLayoutSize`, framework-driven height, flex-column fill) is not documented. There is also no supported way to set a minimum node *width* for a DOM widget, so the controls are contained with CSS instead of a hard floor.
+- **Video Outpaint scroll-to-zoom** (`web/vace_outpaint.js`). Under Nodes 2.0 the Vue renderer's `TransformPane` installs a capture-phase wheel forwarder that hijacks the wheel to zoom the graph. The editor opts out via the undocumented `data-capture-wheel="true"` contract plus focusing the canvas on hover; if that attribute/focus check changes, plain scroll would zoom the graph instead of the crop preview.
 - **Custom socket types.** The `io.Custom("VHS_BatchManager")` input on Load Videos From Folder (for the optional VideoHelperSuite Meta Batch Manager) uses an undocumented pattern.
 - **List-mode inputs.** VACE Batch Context relies on the `is_input_list` calling convention (every input delivered as a list), whose semantics are not spelled out in the V3 docs.
 
