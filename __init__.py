@@ -13,6 +13,7 @@ from .vace_inpaint import WanVACEInpaint
 from .wan_first_middle_last_frame import WanFirstMiddleLastFrameToVideo
 from .vace_first_middle_last import WanVACEFirstMiddleLast
 from .vace_outpaint import VACEOutpaint
+from .duration import Duration
 
 # Node display names come from each node's Schema.display_name, so no
 # NODE_DISPLAY_NAME_MAPPINGS is needed here.
@@ -31,6 +32,7 @@ class WanVacePrepExtension(ComfyExtension):
             WanFirstMiddleLastFrameToVideo,
             WanVACEFirstMiddleLast,
             VACEOutpaint,
+            Duration,
         ]
 
 

@@ -23,6 +23,7 @@ git clone https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep
 - [VACE Batch Context](#vace-batch-context)
 - [VACE Extend](#vace-extend)
 - [Load Videos From Folder (Simple)](#load-videos-from-folder-simple)
+- [MiniMax H3 Duration](#minimax-h3-duration)
 
 **Experimental:**
 
@@ -234,6 +235,25 @@ See the VHS Meta Batch Manager node documentation for more information.
 | audio | Combined audio track from all loaded videos. Disabled (empty) if any video lacks audio. |
 
 **This node may be fragile under Nodes 2.0 / V3.** The optional `meta_batch` input uses `io.Custom("VHS_BatchManager")` to accept a VideoHelperSuite Meta Batch Manager connection, and this custom-socket-type pattern is undocumented. ComfyUI ships essentially no reference for the V3 `io.*` type catalog; the only authoritative source is the (underscore-private) `comfy_api/latest/_io.py` and the compiled frontend.
+
+---
+
+### MiniMax H3 Duration
+
+Converts a requested duration in seconds to a MiniMax H3-compatible frame count and the resulting revised duration. MiniMax H3 requires frame counts of the form `17k+5` at a fixed 24 fps; this node rounds up to the nearest valid frame count and reports the actual (revised) duration that results.
+
+**Parameters:**
+
+| Parameter | Default | Description |
+|-|-|-|
+| seconds | 6.0 | Requested duration in seconds |
+
+**Outputs:**
+
+| Output | Description |
+|-|-|
+| frames | Frame count, rounded up to the nearest `17k+5` at 24 fps |
+| revised_seconds | Actual duration in seconds that `frames` produces at 24 fps |
 
 ---
 ## Experimental
