@@ -242,6 +242,8 @@ See the VHS Meta Batch Manager node documentation for more information.
 
 Converts a requested duration in seconds to a MiniMax H3-compatible frame count and the resulting revised duration. MiniMax H3 requires frame counts of the form `17k+5` at a fixed 24 fps; this node rounds up to the nearest valid frame count and reports the actual (revised) duration that results.
 
+<img width="747" height="541" alt="Screenshot 2026-08-06 at 15-50-48 Unsaved Workflow (2) - ComfyUI" src="https://github.com/user-attachments/assets/8402f630-d4ca-4755-a28b-5af5234da2f2" />
+
 **Parameters:**
 
 | Parameter | Default | Description |
