@@ -7,7 +7,18 @@ const NODE_CLASS  = "VACEOutpaint";
 const API_PREFIX  = "/vace_outpaint";
 const CANVAS_H    = 320;   // minimum canvas area height (px)
 const MARGIN      = 22;    // canvas margin around source frame (px)
-const GRID        = 16;    // quantisation grid (source px)
+// Per-consumer-model geometry. `grid` is the model's mask cell in output
+// pixels (the VAE's spatial compression x the transformer's spatial patch);
+// `out` is the default output resolution, chosen to sit on that grid. Mirrors
+// _MODELS in vace_outpaint.py - keep the two in step.
+const MODELS = {
+    wan: { grid: 16, out: [1280, 720], label: "wan  gray pad, 16px grid" },
+    ltx: { grid: 32, out: [1280, 704], label: "ltx  black pad, 32px grid" },
+    h3:  { grid: 32, out: [1344, 768], label: "h3  gray pad, 32px grid" },
+};
+const DEFAULT_MODEL = "wan";
+const CANVAS_WIDGETS = ["crop_state", "model", "custom_color", "pad_color", "custom_grid"];
+const MIN_GRID      = 8;   // smallest accepted custom grid override
 const OVERHANG    = 1;     // minimum required outpaint (source px)
 
 // ── Geometry helpers ──────────────────────────────────────────────────
@@ -33,31 +44,41 @@ function srcToCr(s, sf, scale) {
     };
 }
 
-function quantizeSrc(s) {
+function quantizeSrc(s, grid) {
     return {
-        x: Math.round(s.x / GRID) * GRID,
-        y: Math.round(s.y / GRID) * GRID,
-        w: Math.max(GRID, Math.round(s.w / GRID) * GRID),
-        h: Math.max(GRID, Math.round(s.h / GRID) * GRID),
+        x: Math.round(s.x / grid) * grid,
+        y: Math.round(s.y / grid) * grid,
+        w: Math.max(grid, Math.round(s.w / grid) * grid),
+        h: Math.max(grid, Math.round(s.h / grid) * grid),
     };
+}
+
+/** Nearest multiple of `grid`, at least one whole cell. */
+function snapDim(v, grid) { return Math.max(grid, Math.round(v / grid) * grid); }
+
+/** Active grid: the model's, unless a custom override is set. */
+function gridFor(st) {
+    return st.customGrid >= MIN_GRID ? st.customGrid : (MODELS[st.model] ?? MODELS[DEFAULT_MODEL]).grid;
 }
 
 /** Adjust outW/outH AR to match cropAR (no-op when outW/outH are unset).
  *  preserveArea=true keeps pixel count constant (used by preset chips).
  *  preserveArea=false keeps outW fixed, adjusts only outH (used by drag-resize). */
 function syncOutToAR(st, preserveArea = false) {
-    if (st.outW >= GRID && st.outH >= GRID) {
+    const G = st.grid;
+    if (st.outW >= G && st.outH >= G) {
         if (preserveArea) {
             const area = st.outW * st.outH;
-            st.outW = Math.max(GRID, Math.round(Math.sqrt(area * st.cropAR) / GRID) * GRID);
+            st.outW = snapDim(Math.sqrt(area * st.cropAR), G);
         }
-        st.outH = Math.max(GRID, Math.round(st.outW / st.cropAR / GRID) * GRID);
+        st.outH = snapDim(st.outW / st.cropAR, G);
     }
 }
 
-/** Default output resolution for a new node: fixed 1280×720. */
-function defaultOut(_st) {
-    return { w: 1280, h: 720 };
+/** Default output resolution for the active model, snapped to its grid. */
+function defaultOut(st) {
+    const [w, h] = (MODELS[st.model] ?? MODELS[DEFAULT_MODEL]).out;
+    return { w: snapDim(w, st.grid), h: snapDim(h, st.grid) };
 }
 
 /** Enforce overlap constraint: crop must intersect source by at least OVERHANG px. */
@@ -73,7 +94,7 @@ function clampToValid(s, srcW, srcH) {
 /** Full pipeline: canvas px → source px → quantise → constrain → canvas px. */
 function applyCanvasCr(canvasCr, st) {
     let s = crToSrc(canvasCr, st.sf, st.scale);
-    s = quantizeSrc(s);
+    s = quantizeSrc(s, st.grid);
     s = clampToValid(s, st.srcW, st.srcH);
     st.cr = srcToCr(s, st.sf, st.scale);
 }
@@ -92,8 +113,11 @@ function createState() {
         initialized: false,
         view: { zoom: 1.0, panX: 0, panY: 0 },
         outW: 0, outH: 0,
-        maskColor: "wan",
+        model: DEFAULT_MODEL,
+        grid: MODELS[DEFAULT_MODEL].grid,
+        padColor: "model",
         customColor: "128,128,128",
+        customGrid: 0,
     };
 }
 
@@ -128,10 +152,11 @@ function initLayout(st, wrapEl) {
     st.sf = { x: sfX, y: sfY, w: sfW, h: sfH };
     st.scale = sfW / st.srcW;
     st.view = { zoom: 1.0, panX: 0, panY: 0 };
-    // Default: 1280×720 centered on the source frame.
-    const defW = 1280, defH = 720;
-    const defX = Math.round((st.srcW - defW) / (2 * GRID)) * GRID;
-    const defY = Math.round((st.srcH - defH) / (2 * GRID)) * GRID;
+    // Default: the model's native canvas, centered on the source frame.
+    const G = st.grid;
+    const { w: defW, h: defH } = defaultOut(st);
+    const defX = Math.round((st.srcW - defW) / (2 * G)) * G;
+    const defY = Math.round((st.srcH - defH) / (2 * G)) * G;
     const def = clampToValid({ x: defX, y: defY, w: defW, h: defH }, st.srcW, st.srcH);
     st.cr = srcToCr(def, st.sf, st.scale);
     st.cropAR = st.cr.w / st.cr.h;
@@ -145,12 +170,12 @@ function initLayout(st, wrapEl) {
 
 /** Parse a crop_state widget string to source-space fields, or null if invalid.
  *  Shape: "x,y,w,h[,outW,outH[,arLocked]]" in source pixels. */
-function parseCropState(val) {
+function parseCropState(val, grid) {
     if (!val) return null;
     const parts = val.split(",").map(Number);
     if (parts.length < 4 || parts.slice(0, 4).some(isNaN)) return null;
     const [x, y, w, h] = parts;
-    if (w < GRID || h < GRID) return null;
+    if (w < grid || h < grid) return null;
     const out = { x, y, w, h, outW: 0, outH: 0, arLocked: true };
     if (parts.length >= 6 && !isNaN(parts[4]) && !isNaN(parts[5])) {
         out.outW = parts[4] || 0;
@@ -168,10 +193,14 @@ function parseCropState(val) {
 function applyPendingCrop(st) {
     const p = st.pendingCrop;
     if (!p) return;
-    st.cr = srcToCr({ x: p.x, y: p.y, w: p.w, h: p.h }, st.sf, st.scale);
-    st.cropAR = p.w / p.h;
-    st.outW = p.outW;
-    st.outH = p.outH;
+    // The saved rect was snapped against whatever grid was active when it was
+    // written, so re-snap it: a 16-grid layout reopened under a 32-grid model
+    // must show the rect the node will actually use, not the stale one.
+    const s = quantizeSrc({ x: p.x, y: p.y, w: p.w, h: p.h }, st.grid);
+    st.cr = srcToCr(s, st.sf, st.scale);
+    st.cropAR = s.w / s.h;
+    st.outW = p.outW >= st.grid ? snapDim(p.outW, st.grid) : 0;
+    st.outH = p.outH >= st.grid ? snapDim(p.outH, st.grid) : 0;
     st.arLocked = p.arLocked;
     st.pendingCrop = undefined;
 }
@@ -290,9 +319,9 @@ function buildUI() {
         "width:58px;padding:2px 5px;font-size:11px;font-family:monospace;" +
         "background:#1e1e1e;color:#ccc;border:1px solid #444;border-radius:4px;text-align:right;";
     const wLabel = mkEl("span", "font-size:10px;color:#999;"); wLabel.textContent = "W";
-    const wInput = mkEl("input", INPUT_CSS, { type: "number", min: GRID, step: GRID, value: 1280 });
+    const wInput = mkEl("input", INPUT_CSS, { type: "number", min: 16, step: 16, value: 1280 });
     const hLabel = mkEl("span", "font-size:10px;color:#999;"); hLabel.textContent = "H";
-    const hInput = mkEl("input", INPUT_CSS, { type: "number", min: GRID, step: GRID, value: 720 });
+    const hInput = mkEl("input", INPUT_CSS, { type: "number", min: 16, step: 16, value: 720 });
     const arBtn = mkEl("button",
         "padding:3px 9px;font-size:11px;border:1px solid #99c0ee;border-radius:5px;" +
         "background:#1a3a5a;color:#aadaff;cursor:pointer;"
@@ -307,6 +336,7 @@ function buildUI() {
         ["16:9", 1280,  720], ["9:16",  720, 1280], ["21:9", 1344,  576], ["9:21",  576, 1344],
         ["4:3",   960,  720], ["3:4",   720,  960], ["1:1",   960,  960],
         ["3:2",  1080,  720], ["2:3",   720, 1080],
+        ["7:4",  1344,  768], ["4:7",   768, 1344],
     ];
     const CHIP_CSS = "padding:2px 7px;font-size:10px;font-family:monospace;" +
         "border:1px solid #444;border-radius:12px;background:#222;color:#999;" +
@@ -352,29 +382,48 @@ function buildUI() {
     scrubIdx.textContent = "0 / 0";
     scrubRow.append(frameLabel, scrubber, scrubIdx);
 
-    // ── Output Size + Mask Color Row (shared) ──
+    // ── Output Size Row ──
     const outSizeRow = mkEl("div", "display:flex;align-items:center;gap:5px;flex-wrap:wrap;");
     const outLabel = mkEl("span", "font-size:10px;color:#999;"); outLabel.textContent = "output resolution:";
-    const outWInput = mkEl("input", INPUT_CSS, { type: "number", min: 0, step: GRID, value: 0 });
+    const outWInput = mkEl("input", INPUT_CSS, { type: "number", min: 0, step: 16, value: 0 });
     outWInput.placeholder = "auto";
     const outXLabel = mkEl("span", "font-size:10px;color:#999;"); outXLabel.textContent = "×";
-    const outHInput = mkEl("input", INPUT_CSS, { type: "number", min: 0, step: GRID, value: 0 });
+    const outHInput = mkEl("input", INPUT_CSS, { type: "number", min: 0, step: 16, value: 0 });
     outHInput.placeholder = "auto";
-    const maskColorLabel = mkEl("span", "font-size:10px;color:#999;margin-left:24px;"); maskColorLabel.textContent = "pad color:";
+    outSizeRow.append(outLabel, outWInput, outXLabel, outHInput);
+
+    // ── Model Row ──
+    // The model sets BOTH the quantisation grid and the pad colour: they are not
+    // independent, since each consumer's mask cell and its trained pad convention
+    // come as a pair. pad / grid are per-model overrides on top of that.
+    const modelRow = mkEl("div", "display:flex;align-items:center;gap:5px;flex-wrap:wrap;");
     const SELECT_CSS = "padding:2px 5px;font-size:11px;font-family:monospace;background:#1e1e1e;color:#ccc;border:1px solid #444;border-radius:4px;cursor:pointer;";
-    const maskColorSelect = mkEl("select", SELECT_CSS);
-    for (const [val, label] of [["wan", "wan (gray)"], ["ltx", "ltx (black)"], ["custom", "custom"]]) {
+    const modelLabel = mkEl("span", "font-size:10px;color:#999;"); modelLabel.textContent = "model:";
+    const modelSelect = mkEl("select", SELECT_CSS);
+    for (const [val, spec] of Object.entries(MODELS)) {
+        const opt = document.createElement("option");
+        opt.value = val; opt.textContent = spec.label;
+        modelSelect.appendChild(opt);
+    }
+    modelSelect.title = "Consumer model. Sets the quantisation grid and the pad color together.";
+    const padColorLabel = mkEl("span", "font-size:10px;color:#999;margin-left:14px;"); padColorLabel.textContent = "pad:";
+    const padColorSelect = mkEl("select", SELECT_CSS);
+    for (const [val, label] of [["model", "model default"], ["custom", "custom"]]) {
         const opt = document.createElement("option");
         opt.value = val; opt.textContent = label;
-        maskColorSelect.appendChild(opt);
+        padColorSelect.appendChild(opt);
     }
     const customColorInput = mkEl("input", INPUT_CSS + "width:100px;display:none;", { type: "text", value: "128,128,128", placeholder: "#RRGGBB or R,G,B" });
-    outSizeRow.append(outLabel, outWInput, outXLabel, outHInput, maskColorLabel, maskColorSelect, customColorInput);
+    const gridLabel = mkEl("span", "font-size:10px;color:#999;margin-left:14px;"); gridLabel.textContent = "grid:";
+    const gridInput = mkEl("input", INPUT_CSS + "width:52px;", { type: "number", min: 0, step: 8, value: 0 });
+    gridInput.placeholder = "auto";
+    gridInput.title = "Grid override in output pixels. 0 = use the model's grid.";
+    modelRow.append(modelLabel, modelSelect, padColorLabel, padColorSelect, customColorInput, gridLabel, gridInput);
 
-    ctrl.append(scrubRow, cropSizeRow, presetRow, snapRow, outSizeRow);
+    ctrl.append(scrubRow, cropSizeRow, presetRow, snapRow, outSizeRow, modelRow);
     root.append(wrap, ctrl);
 
-    return { root, wrap, viewport, zoomIndicator, sfEl, frameImg, srcLabel, noDataMsg, maskTop, maskBot, maskLeft, maskRight, cropBox, arBtn, snapBtns, scrubber, scrubIdx, wInput, hInput, resetBtn, chipBtns, sizeLabel, padLabelT, padLabelB, padLabelL, padLabelR, edges, outWInput, outHInput, maskColorSelect, customColorInput };
+    return { root, wrap, viewport, zoomIndicator, sfEl, frameImg, srcLabel, noDataMsg, maskTop, maskBot, maskLeft, maskRight, cropBox, arBtn, snapBtns, scrubber, scrubIdx, wInput, hInput, resetBtn, chipBtns, sizeLabel, padLabelT, padLabelB, padLabelL, padLabelR, edges, outWInput, outHInput, modelSelect, padColorSelect, customColorInput, gridInput };
 }
 
 // ── Render ────────────────────────────────────────────────────────────
@@ -429,7 +478,7 @@ function render(st, dom) {
     const outW = Math.round(s.w), outH = Math.round(s.h);
     const effOutW = st.outW;
     const effOutH = st.outH;
-    const hasOutScale = effOutW >= GRID && effOutH >= GRID && (effOutW !== outW || effOutH !== outH);
+    const hasOutScale = effOutW >= st.grid && effOutH >= st.grid && (effOutW !== outW || effOutH !== outH);
     dom.sizeLabel.textContent = hasOutScale
         ? `${outW}×${outH} → ${effOutW}×${effOutH}`
         : `${outW} × ${outH}`;
@@ -501,13 +550,17 @@ function fitCropInView(st, dom) {
 // ── Widget sync ───────────────────────────────────────────────────────
 
 function syncWidgets(st, widgets, node) {
-    const s = quantizeSrc(crToSrc(st.cr, st.sf, st.scale));
+    const s = quantizeSrc(crToSrc(st.cr, st.sf, st.scale), st.grid);
     if (widgets.cropState)
         widgets.cropState.value = `${s.x},${s.y},${s.w},${s.h},${st.outW},${st.outH},${st.arLocked ? 1 : 0}`;
-    if (widgets.maskColor)
-        widgets.maskColor.value = st.maskColor;
+    if (widgets.model)
+        widgets.model.value = st.model;
+    if (widgets.padColor)
+        widgets.padColor.value = st.padColor;
     if (widgets.customColor)
         widgets.customColor.value = st.customColor;
+    if (widgets.customGrid)
+        widgets.customGrid.value = st.customGrid;
     if (node.graph) node.graph.setDirtyCanvas(true, true);
 }
 
@@ -562,14 +615,15 @@ async function fetchFrame(nodeId, idx, dom) {
 
 function applyCropDim(st, dom, widgets, node, axis, rawVal) {
     const isW = axis === "w";
-    const r = Math.max(GRID, Math.round(parseInt(rawVal, 10) / GRID) * GRID) || GRID;
+    const G = st.grid;
+    const r = snapDim(parseInt(rawVal, 10), G) || G;
     let s = crToSrc(st.cr, st.sf, st.scale);
     const cx = s.x + s.w / 2, cy = s.y + s.h / 2;
-    if (isW) { s.w = r; if (st.arLocked) s.h = Math.max(GRID, Math.round(r / st.cropAR / GRID) * GRID); }
-    else     { s.h = r; if (st.arLocked) s.w = Math.max(GRID, Math.round(r * st.cropAR / GRID) * GRID); }
-    s.x = Math.round((cx - s.w / 2) / GRID) * GRID;
-    s.y = Math.round((cy - s.h / 2) / GRID) * GRID;
-    s = clampToValid(quantizeSrc(s), st.srcW, st.srcH);
+    if (isW) { s.w = r; if (st.arLocked) s.h = snapDim(r / st.cropAR, G); }
+    else     { s.h = r; if (st.arLocked) s.w = snapDim(r * st.cropAR, G); }
+    s.x = Math.round((cx - s.w / 2) / G) * G;
+    s.y = Math.round((cy - s.h / 2) / G) * G;
+    s = clampToValid(quantizeSrc(s, G), st.srcW, st.srcH);
     st.cr = srcToCr(s, st.sf, st.scale);
     if (!st.arLocked) st.cropAR = s.w / s.h;
     syncOutToAR(st);
@@ -578,12 +632,13 @@ function applyCropDim(st, dom, widgets, node, axis, rawVal) {
 
 function applyOutDim(st, dom, widgets, node, axis, rawVal) {
     const v = parseInt(rawVal, 10);
-    if (isNaN(v) || v < GRID) {
+    const G = st.grid;
+    if (isNaN(v) || v < G) {
         const d = defaultOut(st); st.outW = d.w; st.outH = d.h;
     } else {
-        const r = Math.round(v / GRID) * GRID;
-        if (axis === "w") { st.outW = r; st.outH = Math.max(GRID, Math.round(r / st.cropAR / GRID) * GRID); }
-        else              { st.outH = r; st.outW = Math.max(GRID, Math.round(r * st.cropAR / GRID) * GRID); }
+        const r = snapDim(v, G);
+        if (axis === "w") { st.outW = r; st.outH = snapDim(r / st.cropAR, G); }
+        else              { st.outH = r; st.outW = snapDim(r * st.cropAR, G); }
     }
     render(st, dom); syncWidgets(st, widgets, node);
 }
@@ -614,18 +669,21 @@ function wireInteractions(st, dom, widgets, node, nodeId) {
         btn.addEventListener("click", () => {
             const rw = parseInt(btn.dataset.chipW, 10), rh = parseInt(btn.dataset.chipH, 10);
             const chipAR = rw / rh;
+            const G = st.grid;
             setArLocked(st, dom, true); st.cropAR = chipAR;
             let s = crToSrc(st.cr, st.sf, st.scale);
             const cx = s.x + s.w / 2, cy = s.y + s.h / 2;
             // Preserve pixel count: solve w*h=area, w/h=chipAR
             const area = s.w * s.h;
-            s.w = Math.max(GRID, Math.round(Math.sqrt(area * chipAR) / GRID) * GRID);
-            s.h = Math.max(GRID, Math.round(s.w / chipAR / GRID) * GRID);
-            s.x = Math.round((cx - s.w / 2) / GRID) * GRID;
-            s.y = Math.round((cy - s.h / 2) / GRID) * GRID;
+            s.w = snapDim(Math.sqrt(area * chipAR), G);
+            s.h = snapDim(s.w / chipAR, G);
+            s.x = Math.round((cx - s.w / 2) / G) * G;
+            s.y = Math.round((cy - s.h / 2) / G) * G;
             s = clampToValid(s, st.srcW, st.srcH);
             st.cr = srcToCr(s, st.sf, st.scale);
-            if (st.outW < GRID || st.outH < GRID) { st.outW = rw; st.outH = rh; }
+            // Seed the output resolution from the chip, snapped to the active
+            // grid (720 and 1080 are not 32-divisible, so h3/ltx need this).
+            if (st.outW < G || st.outH < G) { st.outW = snapDim(rw, G); st.outH = snapDim(st.outW / chipAR, G); }
             else syncOutToAR(st, true);
             fitCropInView(st, dom); render(st, dom); syncWidgets(st, widgets, node);
         });
@@ -635,31 +693,32 @@ function wireInteractions(st, dom, widgets, node, nodeId) {
     for (const btn of snapBtns) {
         btn.addEventListener("click", () => {
             const mode = btn.dataset.snap;
+            const G = st.grid;
             let s = crToSrc(st.cr, st.sf, st.scale);
             const { srcW, srcH } = st;
             if (mode === "center") {
-                s.x = Math.round((srcW - s.w) / 2 / GRID) * GRID;
-                s.y = Math.round((srcH - s.h) / 2 / GRID) * GRID;
+                s.x = Math.round((srcW - s.w) / 2 / G) * G;
+                s.y = Math.round((srcH - s.h) / 2 / G) * G;
             } else if (mode === "top") {
                 s.y = 0;
             } else if (mode === "bottom") {
-                s.y = Math.round((srcH - s.h) / GRID) * GRID;
+                s.y = Math.round((srcH - s.h) / G) * G;
             } else if (mode === "fitW") {
                 s.w = srcW;
-                if (st.arLocked) s.h = Math.round(s.w / st.cropAR / GRID) * GRID;
+                if (st.arLocked) s.h = Math.round(s.w / st.cropAR / G) * G;
                 s.x = 0;
-                s.y = Math.round((srcH - s.h) / 2 / GRID) * GRID;
+                s.y = Math.round((srcH - s.h) / 2 / G) * G;
             } else if (mode === "fitH") {
                 s.h = srcH;
-                if (st.arLocked) s.w = Math.round(s.h * st.cropAR / GRID) * GRID;
+                if (st.arLocked) s.w = Math.round(s.h * st.cropAR / G) * G;
                 s.y = 0;
-                s.x = Math.round((srcW - s.w) / 2 / GRID) * GRID;
+                s.x = Math.round((srcW - s.w) / 2 / G) * G;
             } else if (mode === "left") {
                 s.x = 0;
             } else if (mode === "right") {
-                s.x = Math.round((srcW - s.w) / GRID) * GRID;
+                s.x = Math.round((srcW - s.w) / G) * G;
             }
-            s = clampToValid(quantizeSrc(s), st.srcW, st.srcH);
+            s = clampToValid(quantizeSrc(s, G), st.srcW, st.srcH);
             st.cr = srcToCr(s, st.sf, st.scale);
             if (!st.arLocked) st.cropAR = s.w / s.h;
             syncOutToAR(st);
@@ -728,7 +787,6 @@ function wireInteractions(st, dom, widgets, node, nodeId) {
 
     // ── Pointer drag/resize ──
     let drag = null;
-    const MIN_DRAG_PX = GRID;
 
     wrap.addEventListener("pointerdown", e => {
         // Fallback focus for browsers that don't focus a tabindex div on hover, so the
@@ -771,7 +829,7 @@ function wireInteractions(st, dom, widgets, node, nodeId) {
         const wc   = toWorld(e, wrap, st.view);
         const dx   = wc.x - drag.sx;
         const dy   = wc.y - drag.sy;
-        const minPx = MIN_DRAG_PX * st.scale;
+        const minPx = st.grid * st.scale;
 
         if (drag.type === "move") {
             applyCanvasCr({ ...drag.sb, x: drag.sb.x + dx, y: drag.sb.y + dy }, st);
@@ -829,10 +887,10 @@ function wireInteractions(st, dom, widgets, node, nodeId) {
             drag = null;
             if (type === "resize" && st.arLocked) {
                 // Re-derive h from w so the final dimensions honour the exact locked AR,
-                // undoing any divergence introduced by independent GRID rounding.
+                // undoing any divergence introduced by independent grid rounding.
                 let s = crToSrc(st.cr, st.sf, st.scale);
-                s = quantizeSrc(s);
-                s.h = Math.max(GRID, Math.round(s.w / st.cropAR / GRID) * GRID);
+                s = quantizeSrc(s, st.grid);
+                s.h = snapDim(s.w / st.cropAR, st.grid);
                 s = clampToValid(s, st.srcW, st.srcH);
                 st.cr = srcToCr(s, st.sf, st.scale);
             }
@@ -858,24 +916,31 @@ function wireInteractions(st, dom, widgets, node, nodeId) {
         if ([wInput, hInput, outWInput, outHInput].includes(document.activeElement)) return;
         e.preventDefault(); e.stopPropagation();
         let s = crToSrc(st.cr, st.sf, st.scale);
-        const step = e.shiftKey ? GRID * 4 : GRID;
+        const step = e.shiftKey ? st.grid * 4 : st.grid;
         if (e.key === "ArrowUp")    s.y -= step;
         if (e.key === "ArrowDown")  s.y += step;
         if (e.key === "ArrowLeft")  s.x -= step;
         if (e.key === "ArrowRight") s.x += step;
-        s = clampToValid(quantizeSrc(s), st.srcW, st.srcH);
+        s = clampToValid(quantizeSrc(s, st.grid), st.srcW, st.srcH);
         st.cr = srcToCr(s, st.sf, st.scale);
         render(st, dom); syncWidgets(st, widgets, node);
     });
 
-    // ── Mask color controls ──
-    dom.maskColorSelect.value = st.maskColor;
-    dom.customColorInput.style.display = st.maskColor === "custom" ? "inline-block" : "none";
-    dom.customColorInput.value = st.customColor;
+    // ── Model / pad color / grid controls ──
+    applyModelToDOM(st, dom);
 
-    dom.maskColorSelect.addEventListener("change", () => {
-        st.maskColor = dom.maskColorSelect.value;
-        dom.customColorInput.style.display = st.maskColor === "custom" ? "inline-block" : "none";
+    dom.modelSelect.addEventListener("change", () => {
+        st.model = dom.modelSelect.value;
+        applyGrid(st, dom, widgets, node);
+    });
+    dom.gridInput.addEventListener("change", () => {
+        const v = parseInt(dom.gridInput.value, 10);
+        st.customGrid = (isNaN(v) || v < MIN_GRID) ? 0 : v;
+        applyGrid(st, dom, widgets, node);
+    });
+    dom.padColorSelect.addEventListener("change", () => {
+        st.padColor = dom.padColorSelect.value;
+        applyModelToDOM(st, dom);
         syncWidgets(st, widgets, node);
     });
     dom.customColorInput.addEventListener("change", () => {
@@ -884,35 +949,82 @@ function wireInteractions(st, dom, widgets, node, nodeId) {
     });
 }
 
-// ── Mask color DOM sync ───────────────────────────────────────────────
+// ── Model / grid DOM sync ─────────────────────────────────────────────
 
-function applyMaskColorToDOM(st, dom) {
-    dom.maskColorSelect.value = st.maskColor;
-    dom.customColorInput.style.display = st.maskColor === "custom" ? "inline-block" : "none";
+function applyModelToDOM(st, dom) {
+    dom.modelSelect.value = st.model;
+    dom.padColorSelect.value = st.padColor;
+    dom.customColorInput.style.display = st.padColor === "custom" ? "inline-block" : "none";
     dom.customColorInput.value = st.customColor;
+    if (document.activeElement !== dom.gridInput) dom.gridInput.value = st.customGrid || "";
+    // Number inputs step and floor on the active grid so the arrows land on it.
+    for (const el of [dom.wInput, dom.hInput]) { el.min = st.grid; el.step = st.grid; }
+    for (const el of [dom.outWInput, dom.outHInput]) { el.min = 0; el.step = st.grid; }
+    const d = defaultOut(st);
+    dom.resetBtn.title = `Reset to a default ${d.w}x${d.h} centered crop`;
 }
 
-/** Reconcile the mask-color half of state + DOM from the hidden widgets. */
-function refreshColorFromWidgets(st, dom, widgets) {
-    if (widgets.maskColor)   st.maskColor   = widgets.maskColor.value;
+/** Recompute the active grid and re-snap everything laid out on the old one.
+ *  Without this, a canvas laid out on the 16 grid stays silently misaligned
+ *  after switching to a 32-grid model. */
+function applyGrid(st, dom, widgets, node) {
+    st.grid = gridFor(st);
+    if (st.initialized) {
+        let s = clampToValid(quantizeSrc(crToSrc(st.cr, st.sf, st.scale), st.grid), st.srcW, st.srcH);
+        st.cr = srcToCr(s, st.sf, st.scale);
+        if (!st.arLocked) st.cropAR = s.w / s.h;
+        if (st.outW >= st.grid && st.outH >= st.grid) {
+            st.outW = snapDim(st.outW, st.grid);
+            st.outH = snapDim(st.outH, st.grid);
+        } else {
+            const d = defaultOut(st); st.outW = d.w; st.outH = d.h;
+        }
+    }
+    applyModelToDOM(st, dom);
+    if (st.initialized) fitCropInView(st, dom);
+    render(st, dom);
+    syncWidgets(st, widgets, node);
+}
+
+/** Reconcile model / pad color / grid state + DOM from the hidden widgets.
+ *  Migrates the legacy `mask_color` slot that `model` now occupies: it held
+ *  "wan" / "ltx" / "custom", where "custom" meant grid 16 with a custom pad
+ *  color. That maps to wan + a pad override, which is what it used to do. */
+function refreshModelFromWidgets(st, dom, widgets) {
+    const raw = widgets.model?.value;
+    if (typeof raw === "string" && raw !== "") {
+        if (MODELS[raw]) {
+            st.model = raw;
+            if (widgets.padColor) st.padColor = widgets.padColor.value === "custom" ? "custom" : "model";
+        } else {
+            st.model = DEFAULT_MODEL;
+            st.padColor = "custom";
+        }
+    }
     if (widgets.customColor) st.customColor = widgets.customColor.value;
-    applyMaskColorToDOM(st, dom);
+    if (widgets.customGrid) {
+        const v = parseInt(widgets.customGrid.value, 10);
+        st.customGrid = (isNaN(v) || v < MIN_GRID) ? 0 : v;
+    }
+    st.grid = gridFor(st);
+    applyModelToDOM(st, dom);
 }
 
-/** Convergent reconcile: read the three canvas-managed widget values and make
+/** Convergent reconcile: read every canvas-managed widget value and make
  *  st + DOM match them. Safe to call any time, any number of times, regardless
  *  of whether geometry is ready yet — replaces the old onConfigure value-latching
  *  + ordered-replay dance. Idempotent: it only ever writes widget-derived state,
  *  never DOM-derived state, so it cannot reintroduce the sizing feedback loop. */
 function refreshFromWidgets(st, dom, widgets) {
-    const parsed = parseCropState(widgets.cropState?.value ?? "");
+    // Model first: it sets st.grid, which parseCropState validates against.
+    refreshModelFromWidgets(st, dom, widgets);
+    const parsed = parseCropState(widgets.cropState?.value ?? "", st.grid);
     if (parsed) {
         st.pendingCrop = parsed;
         // Apply immediately once geometry exists; otherwise the next successful
         // initLayout consumes the stash. Either way crop lands exactly once.
         if (st.initialized) applyPendingCrop(st);
     }
-    refreshColorFromWidgets(st, dom, widgets);
     // Sync the 🔒/🔓 button to the (possibly restored) lock state. Only meaningful
     // once st.cr is valid; pre-init the button stays at its default until layout.
     if (st.initialized) setArLocked(st, dom, st.arLocked);
@@ -952,7 +1064,7 @@ function setupResizeObserver(st, dom, widgets) {
             // stashed pendingCrop; refreshFromWidgets reconciles colors + AR button.
             if (!initLayout(st, dom.wrap)) return;
             refreshFromWidgets(st, dom, widgets);
-            if (st.outW < GRID || st.outH < GRID) {
+            if (st.outW < st.grid || st.outH < st.grid) {
                 const d = defaultOut(st); st.outW = d.w; st.outH = d.h;
             } else {
                 syncOutToAR(st);
@@ -968,7 +1080,7 @@ function setupResizeObserver(st, dom, widgets) {
         const prevPan  = { ...st.view };
         if (!initLayout(st, dom.wrap)) return;
         // Restore crop in new coordinate space.
-        const s = clampToValid(quantizeSrc(prevSrc), st.srcW, st.srcH);
+        const s = clampToValid(quantizeSrc(prevSrc, st.grid), st.srcW, st.srcH);
         st.cr = srcToCr(s, st.sf, st.scale);
         st.cropAR = s.w / s.h;
         // Keep the view if it was non-default (user has zoomed/panned).
@@ -996,13 +1108,15 @@ app.registerExtension({
             // Find canvas-managed widgets.
             const widgets = {
                 cropState:   node.widgets?.find(w => w.name === "crop_state"),
-                maskColor:   node.widgets?.find(w => w.name === "mask_color"),
+                model:       node.widgets?.find(w => w.name === "model"),
                 customColor: node.widgets?.find(w => w.name === "custom_color"),
+                padColor:    node.widgets?.find(w => w.name === "pad_color"),
+                customGrid:  node.widgets?.find(w => w.name === "custom_grid"),
             };
 
             // Remove input connectors for canvas-driven widgets (not wireable).
             if (node.inputs) {
-                const hidden = new Set(["crop_state", "mask_color", "custom_color"]);
+                const hidden = new Set(CANVAS_WIDGETS);
                 for (let i = node.inputs.length - 1; i >= 0; i--) {
                     if (hidden.has(node.inputs[i].name)) node.removeInput(i);
                 }
@@ -1012,7 +1126,7 @@ app.registerExtension({
             const st  = createState();
             const dom = buildUI();
 
-            const CTRL_H = 185; // scrubber + size row + presets + snap + out+mask row + gaps
+            const CTRL_H = 211; // scrubber + size + presets + snap + output + model rows + gaps
             const MIN_W   = 520;
             const MIN_H   = CANVAS_H + CTRL_H;
             st.minH = MIN_H;  // read by warnIfSizingIgnored
@@ -1051,7 +1165,7 @@ app.registerExtension({
 
             // Place canvas widget first; hide all canvas-managed widgets from native UI.
             if (node.widgets) {
-                const hideNames = new Set(["crop_state", "mask_color", "custom_color"]);
+                const hideNames = new Set(CANVAS_WIDGETS);
                 const toHide = node.widgets.filter(w => hideNames.has(w.name));
                 node.widgets = [domWidget, ...node.widgets.filter(w => w !== domWidget && !hideNames.has(w.name))];
                 for (const w of toHide) { node.widgets.push(w); w.computeSize = () => [0, -4]; w.type = "hidden"; w.hidden = true; }
@@ -1072,6 +1186,7 @@ app.registerExtension({
             const applyFrameData = (data, preserveCrop) => {
                 const val = widgets.cropState?.value ?? "";
                 const hadCrop = preserveCrop && val !== "" && !val.split(",").some(isNaN);
+                refreshModelFromWidgets(st, dom, widgets);
                 const prevSrc = (hadCrop && st.initialized) ? crToSrc(st.cr, st.sf, st.scale) : null;
                 st.srcW = data.width;
                 st.srcH = data.height;
@@ -1083,15 +1198,15 @@ app.registerExtension({
                 // call refreshFromWidgets here: it would re-parse crop_state and clobber the
                 // freshly reprojected (1) crop with the stale saved coords.
                 if (prevSrc) {
-                    const s = clampToValid(quantizeSrc(prevSrc), st.srcW, st.srcH);
+                    const s = clampToValid(quantizeSrc(prevSrc, st.grid), st.srcW, st.srcH);
                     st.cr = srcToCr(s, st.sf, st.scale);
                     st.cropAR = s.w / s.h;
                 } else if (hadCrop) {
-                    const p = parseCropState(val);
+                    const p = parseCropState(val, st.grid);
                     if (p) { st.pendingCrop = p; applyPendingCrop(st); }
                 }
                 // Only set default output resolution if the user hasn't configured one.
-                if (st.outW < GRID || st.outH < GRID) {
+                if (st.outW < st.grid || st.outH < st.grid) {
                     const d = defaultOut(st); st.outW = d.w; st.outH = d.h;
                 }
                 setFrameImg(dom, "data:image/jpeg;base64," + data.frame);
@@ -1100,10 +1215,9 @@ app.registerExtension({
                 dom.scrubber.max = Math.max(0, data.frame_count - 1);
                 dom.scrubber.value = 0;
                 dom.scrubIdx.textContent = "0 / " + Math.max(0, data.frame_count - 1);
-                // Reconcile only the color half from the hidden widgets (crop already
-                // resolved above), then re-sync the AR button in case (2) restored a
+                // The model half was reconciled above (before initLayout, so the
+                // grid is right); just re-sync the AR button in case (2) restored a
                 // different lock state.
-                refreshColorFromWidgets(st, dom, widgets);
                 setArLocked(st, dom, st.arLocked);
                 fitCropInView(st, dom);
                 render(st, dom);
@@ -1127,7 +1241,7 @@ app.registerExtension({
                 if (initLayout(st, dom.wrap)) {
                     // initLayout applied any stashed pendingCrop; reconcile colors + AR button.
                     refreshFromWidgets(st, dom, widgets);
-                    if (st.outW < GRID || st.outH < GRID) {
+                    if (st.outW < st.grid || st.outH < st.grid) {
                         const d = defaultOut(st); st.outW = d.w; st.outH = d.h;
                     } else {
                         syncOutToAR(st);

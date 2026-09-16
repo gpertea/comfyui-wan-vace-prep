@@ -1,5 +1,6 @@
 import base64
 import io as _io
+import math
 
 import numpy as np
 import server
@@ -9,7 +10,36 @@ from aiohttp import web
 from comfy_api.latest import io
 from PIL import Image
 
-_GRID = 16
+# ── Consumer model table ────────────────────────────────────────────────
+#
+# `grid` is the model's mask cell measured in OUTPUT pixels: the VAE's spatial
+# compression multiplied by the transformer's spatial patch size. A mask
+# boundary that is not a multiple of the grid lands mid-cell, and the consumer
+# must resolve the partial cell one of two bad ways — freeze it (pad colour is
+# encoded as clean content, drawing a frame around the kept region) or
+# regenerate it (up to grid-1 px of real footage replaced, which reads as edge
+# blur). Emitting on the grid removes the choice: every cell is purely content
+# or purely pad.
+#
+#   wan  8x VAE spatial compression x the DiT (1,2,2) patch          = 16
+#        (comfy/ldm/wan/model.py: patch_size=(1, 2, 2))
+#   ltx  32x VAE spatial compression x SymmetricPatchifier(1)        = 32
+#        (comfy_extras/nodes_lt.py: height // 32; model.py: patchifier(1))
+#   h3   16x VAE spatial compression x the DiT 2x2 patch             = 32
+#        (see d:\work\h3-outpaint — CELL = 32 in its _quantize_mask)
+#
+# `rgb` is the pad colour. Grey (0.5) is the natural-image centre for a VAE
+# normalised on ImageNet statistics; black sits ~2 sigma below the mean and
+# writes the strongest possible edge feature into the preserved content next to
+# the boundary (and is the letterbox colour in video training data). LTX keeps
+# black because that is its trained convention.
+_MODELS = {
+    "wan": {"grid": 16, "rgb": (0.5, 0.5, 0.5)},
+    "ltx": {"grid": 32, "rgb": (0.0, 0.0, 0.0)},
+    "h3":  {"grid": 32, "rgb": (0.5, 0.5, 0.5)},
+}
+_DEFAULT_MODEL = "wan"
+_MIN_GRID = 8           # smallest accepted custom_grid override
 _MIN_DIM = 32           # smaller than this is not a real video frame
 _DEFAULT_PAD_FACTOR = 0.3  # default upward padding as a fraction of source height
 
@@ -30,6 +60,79 @@ def _parse_color(s):
     if any(v > 1.0 for v in vals):
         vals = [v / 255.0 for v in vals]
     return tuple(max(0.0, min(1.0, v)) for v in vals)
+
+
+def _resolve_model(model, pad_color, custom_grid, custom_color):
+    """Resolve the (name, grid, fill_rgb) triple from the four widget values.
+
+    Handles the legacy `mask_color` slot, which `model` reuses positionally:
+    old workflows stored "wan" / "ltx" / "custom" there. "custom" (or anything
+    unrecognised) meant "grid 16, pad colour from custom_color", so it maps to
+    wan + a colour override, reproducing the old behaviour exactly.
+    """
+    name = model.strip() if isinstance(model, str) else ""
+    if name not in _MODELS:
+        name, pad_color = _DEFAULT_MODEL, "custom"
+    grid = _MODELS[name]["grid"]
+    try:
+        override = int(custom_grid)
+    except (TypeError, ValueError):
+        override = 0
+    if override >= _MIN_GRID:
+        grid = override
+    fill_rgb = _parse_color(custom_color) if pad_color == "custom" else _MODELS[name]["rgb"]
+    return name, grid, fill_rgb
+
+
+def _snap_dim(v, grid):
+    """Nearest multiple of `grid`, at least one whole cell.
+
+    Rounds halves up to match JS `Math.round`, so snapDim() in
+    web/vace_outpaint.js and this agree on every value. Python's built-in
+    round() is banker's rounding and would disagree on exact .5 cells (720 on a
+    32px grid, say: 704 here vs 736 there).
+    """
+    return max(grid, math.floor(v / grid + 0.5) * grid)
+
+
+def _align_inward(pos, length, grid):
+    """Largest grid-aligned sub-interval of [pos, pos + length).
+
+    Used where the content is copied 1:1 and must not be resampled: the kept
+    region of the mask shrinks to whole cells, so the sliver of real content in
+    the partial boundary cells stays in the control video (a good prior) but is
+    labelled generate rather than freezing pad as content.
+    """
+    start = -(-pos // grid) * grid            # ceil to the grid
+    end = ((pos + length) // grid) * grid     # floor to the grid
+    return start, max(0, end - start)
+
+
+def _snap_span(ideal_pos, ideal_len, limit, grid):
+    """Snap a 1-D content span onto the grid inside [0, limit).
+
+    Returns (pos, [len, ...]) with pos and every length a multiple of `grid`
+    and pos + len <= limit. The lengths are the floor and ceil of the ideal
+    length in whole cells; the caller picks between them so both axes can be
+    chosen together, minimising the induced aspect error.
+    """
+    cells = limit // grid
+    pos_cells = max(0, min(math.floor(ideal_pos / grid + 0.5), cells - 1))
+    avail = cells - pos_cells
+    lens = {max(1, min(int(c), avail))
+            for c in (math.floor(ideal_len / grid), math.ceil(ideal_len / grid))}
+    return pos_cells * grid, sorted(c * grid for c in lens)
+
+
+def _require_aligned(where, x, y, w, h, grid):
+    """Guard: every edge of the kept content rect must sit on the grid."""
+    bad = [n for n, v in (("x", x), ("y", y), ("w", w), ("h", h)) if v % grid]
+    if bad:
+        raise RuntimeError(
+            f"[VACE Outpaint] internal error: {where} content rect "
+            f"{w}x{h} @ ({x},{y}) is not aligned to the {grid}px grid "
+            f"(offending: {', '.join(bad)})"
+        )
 
 
 def _tensor_to_jpeg(frame_tensor):
@@ -66,14 +169,29 @@ class VACEOutpaint(io.ComfyNode):
                     tooltip="Canvas-managed crop state: 'x,y,w,h[,ow,oh]' in source pixels. Set by the interactive widget.",
                 ),
                 io.String.Input(
-                    "mask_color",
+                    "model",
                     default="wan",
-                    tooltip="Fill color preset for the outpainted region. Managed by the canvas widget.",
+                    tooltip=(
+                        "Consumer model. Sets BOTH the quantisation grid (wan 16, ltx 32, "
+                        "h3 32) and the default pad colour. Managed by the canvas widget."
+                    ),
                 ),
                 io.String.Input(
                     "custom_color",
                     default="128,128,128",
-                    tooltip="Custom fill color when mask_color is 'custom'. Managed by the canvas widget.",
+                    tooltip="Pad color used when pad_color is 'custom'. Managed by the canvas widget.",
+                ),
+                io.String.Input(
+                    "pad_color",
+                    default="model",
+                    tooltip="'model' uses the selected model's pad color; 'custom' uses custom_color. Managed by the canvas widget.",
+                ),
+                io.Int.Input(
+                    "custom_grid",
+                    default=0,
+                    min=0,
+                    max=256,
+                    tooltip="Grid override in output pixels; 0 = use the model's grid. Managed by the canvas widget.",
                 ),
             ],
             outputs=[
@@ -91,7 +209,7 @@ class VACEOutpaint(io.ComfyNode):
     # ------------------------------------------------------------------
 
     @classmethod
-    def execute(cls, images, crop_state, mask_color, custom_color) -> io.NodeOutput:
+    def execute(cls, images, crop_state, model, custom_color, pad_color="model", custom_grid=0) -> io.NodeOutput:
         unique_id = cls.hidden.unique_id
         n, src_h, src_w, _ = images.shape
 
@@ -100,6 +218,8 @@ class VACEOutpaint(io.ComfyNode):
                 f"[VACE Outpaint] Input frame dimensions ({src_w}×{src_h}) are too small to be valid. "
                 "If using VFS 'all_frames', either enable output_all_frames=True or connect 'selected_frames' instead."
             )
+
+        model_name, grid, fill_rgb = _resolve_model(model, pad_color, custom_grid, custom_color)
 
         # Parse crop state from widget value ("x,y,w,h" or "x,y,w,h,ow,oh").
         crop_x = crop_y = crop_w = crop_h = 0
@@ -115,14 +235,14 @@ class VACEOutpaint(io.ComfyNode):
                 pass
 
         # Fallback: widget hasn't set crop values yet (first run, uninitialized).
-        if crop_w < _GRID or crop_h < _GRID:
-            pad = max(_GRID, round(src_h * _DEFAULT_PAD_FACTOR / _GRID) * _GRID)
+        if crop_w < grid or crop_h < grid:
+            pad = max(grid, round(src_h * _DEFAULT_PAD_FACTOR / grid) * grid)
             crop_x = 0
             crop_y = -pad
-            crop_w = round(src_w / _GRID) * _GRID
-            crop_h = round((src_h + pad) / _GRID) * _GRID
+            crop_w = round(src_w / grid) * grid
+            crop_h = round((src_h + pad) / grid) * grid
             print(
-                f"[VACE Outpaint] crop_state unset — using default: "
+                f"[VACE Outpaint] crop_state unset - using default: "
                 f"x={crop_x} y={crop_y} w={crop_w} h={crop_h}"
             )
 
@@ -130,8 +250,22 @@ class VACEOutpaint(io.ComfyNode):
 
         # Determine effective output resolution early so we can work at the
         # smallest possible buffer size throughout.
-        eff_w = output_width  if output_width  >= _GRID else crop_w_dim
-        eff_h = output_height if output_height >= _GRID else crop_h_dim
+        eff_w = output_width  if output_width  >= grid else crop_w_dim
+        eff_h = output_height if output_height >= grid else crop_h_dim
+
+        # The output canvas itself must sit on the grid, otherwise no content
+        # rect flush with the far edge can be grid-aligned. The widget snaps
+        # both the crop box and the output resolution, so this only fires for a
+        # hand-edited crop_state or a workflow saved against a coarser grid
+        # (e.g. a 16-snapped layout reopened as h3).
+        snap_w = _snap_dim(eff_w, grid)
+        snap_h = _snap_dim(eff_h, grid)
+        if (snap_w, snap_h) != (eff_w, eff_h):
+            print(
+                f"[VACE Outpaint] output {eff_w}×{eff_h} is not on the {grid}px "
+                f"{model_name} grid - snapped to {snap_w}×{snap_h}"
+            )
+            eff_w, eff_h = snap_w, snap_h
 
         # Cache compressed frames so the JS widget can display them.
         _frame_cache[str(unique_id)] = {
@@ -157,9 +291,11 @@ class VACEOutpaint(io.ComfyNode):
         # compose at the small size.  This avoids allocating huge intermediate
         # buffers at the crop-box scale that would only be shrunk immediately
         # afterwards.
+        #
+        # Both paths emit a mask whose kept (black) rect is aligned to `grid`
+        # on all four edges. See the model table above for why that matters.
 
-        _PRESETS = {"wan": (0.5, 0.5, 0.5), "ltx": (0.0, 0.0, 0.0)}
-        fill_rgb = _PRESETS[mask_color] if mask_color in _PRESETS else _parse_color(custom_color)
+        geom_note = ""
 
         if eff_w == crop_w_dim and eff_h == crop_h_dim:
             # No scaling — work directly at crop-box dimensions.
@@ -171,10 +307,29 @@ class VACEOutpaint(io.ComfyNode):
             copy_w = min(src_w - src_x, eff_w - dst_x)
             copy_h = min(src_h - src_y, eff_h - dst_y)
 
+            # Content is copied 1:1 here, so the rect cannot be stretched onto
+            # the grid without resampling it. Shrink the KEPT region inward to
+            # whole cells instead: the partial boundary cells still hold real
+            # pixels in the control video (a useful prior) but are labelled
+            # generate, so no cell is part content and part pad. The content
+            # edge is unaligned whenever the source dimensions are not grid
+            # multiples (a 1080-tall source under a 32px grid, say) or the crop
+            # origin was snapped against a coarser grid.
+            keep_x, keep_w = _align_inward(dst_x, copy_w, grid) if copy_w > 0 else (0, 0)
+            keep_y, keep_h = _align_inward(dst_y, copy_h, grid) if copy_h > 0 else (0, 0)
+
             # Build the mask once (same geometry for all frames).
             mask = np.ones((eff_h, eff_w), dtype=np.float32)  # 1 = outpaint
-            if copy_w > 0 and copy_h > 0:
-                mask[dst_y:dst_y + copy_h, dst_x:dst_x + copy_w] = 0.0
+            if keep_w > 0 and keep_h > 0:
+                _require_aligned("non-scaling", keep_x, keep_y, keep_w, keep_h, grid)
+                mask[keep_y:keep_y + keep_h, keep_x:keep_x + keep_w] = 0.0
+
+            if copy_w > 0 and copy_h > 0 and (keep_x, keep_y, keep_w, keep_h) != (dst_x, dst_y, copy_w, copy_h):
+                lost = copy_w * copy_h - keep_w * keep_h
+                geom_note = (
+                    f" | keep {keep_w}×{keep_h} @ ({keep_x},{keep_y}) of "
+                    f"{copy_w}×{copy_h} content ({lost} px in partial cells regenerated)"
+                )
 
             control_frames = []
             for i in range(n):
@@ -214,16 +369,7 @@ class VACEOutpaint(io.ComfyNode):
             copy_w = min(src_w - src_x, crop_w_dim - dst_x)
             copy_h = min(src_h - src_y, crop_h_dim - dst_y)
 
-            # Destination of the content in the output canvas
-            # (crop-box coords scaled to output coords).
-            out_dst_x = round(dst_x * eff_w / crop_w_dim)
-            out_dst_y = round(dst_y * eff_h / crop_h_dim)
-            out_copy_w = max(1, round(copy_w * eff_w / crop_w_dim))
-            out_copy_h = max(1, round(copy_h * eff_h / crop_h_dim))
-
-            # Build the mask once at output resolution.
             mask = np.ones((eff_h, eff_w), dtype=np.float32)  # 1 = outpaint
-            mask[out_dst_y:out_dst_y + out_copy_h, out_dst_x:out_dst_x + out_copy_w] = 0.0
 
             # Pre-allocate output tensor filled with the pad colour.
             control_video = torch.full((n, eff_h, eff_w, 3), 0.0, device=images.device)
@@ -231,17 +377,57 @@ class VACEOutpaint(io.ComfyNode):
             control_video[:, :, :, 1] = fill_rgb[1]
             control_video[:, :, :, 2] = fill_rgb[2]
 
-            for i in range(n):
-                # Crop the relevant region from the source frame,
-                # then scale it directly to the output sub-region size.
-                region = F.interpolate(
-                    images[i: i + 1, src_y: src_y + copy_h,
-                           src_x: src_x + copy_w, :].permute(0, 3, 1, 2),  # (1,3,copy_h,copy_w)
-                    size=(out_copy_h, out_copy_w),
-                    mode="bilinear", align_corners=False,
-                ).permute(0, 2, 3, 1).squeeze(0)  # (out_copy_h, out_copy_w, 3)
-                control_video[i, out_dst_y: out_dst_y + out_copy_h,
-                              out_dst_x: out_dst_x + out_copy_w] = region
+            if copy_w > 0 and copy_h > 0:
+                # Projecting the crop-box rect into output space with a plain
+                # round() puts the content edges on arbitrary pixels whenever
+                # the output resolution differs from the crop box, which is the
+                # normal case. Snap the rect to the grid instead and resize the
+                # source region to EXACTLY that rect, so mask and content stay
+                # consistent by construction and no content is eroded.
+                #
+                # Snapping the two axes independently perturbs the preserved
+                # region's aspect by up to grid/out_copy per axis, so pick the
+                # floor/ceil combination whose aspect is closest to the EXACT
+                # projection's, tie-broken on total scale error. The reference
+                # is the projected rect, not the source region: the crop box is
+                # stretched onto the output canvas whenever the two aspects
+                # differ, and that stretch is intended, so measuring against
+                # copy_w / copy_h would chase the wrong target.
+                sx = eff_w / crop_w_dim
+                sy = eff_h / crop_h_dim
+                ideal_w = copy_w * sx
+                ideal_h = copy_h * sy
+                out_dst_x, w_cands = _snap_span(dst_x * sx, ideal_w, eff_w, grid)
+                out_dst_y, h_cands = _snap_span(dst_y * sy, ideal_h, eff_h, grid)
+                target_ar = ideal_w / ideal_h
+                out_copy_w, out_copy_h = min(
+                    ((w, h) for w in w_cands for h in h_cands),
+                    key=lambda wh: (abs(wh[0] / wh[1] - target_ar),
+                                    abs(wh[0] - ideal_w) + abs(wh[1] - ideal_h)),
+                )
+                _require_aligned("scaling", out_dst_x, out_dst_y, out_copy_w, out_copy_h, grid)
+
+                mask[out_dst_y:out_dst_y + out_copy_h, out_dst_x:out_dst_x + out_copy_w] = 0.0
+
+                for i in range(n):
+                    # Crop the relevant region from the source frame,
+                    # then scale it directly to the output sub-region size.
+                    region = F.interpolate(
+                        images[i: i + 1, src_y: src_y + copy_h,
+                               src_x: src_x + copy_w, :].permute(0, 3, 1, 2),  # (1,3,copy_h,copy_w)
+                        size=(out_copy_h, out_copy_w),
+                        mode="bilinear", align_corners=False,
+                    ).permute(0, 2, 3, 1).squeeze(0)  # (out_copy_h, out_copy_w, 3)
+                    control_video[i, out_dst_y: out_dst_y + out_copy_h,
+                                  out_dst_x: out_dst_x + out_copy_w] = region
+
+                ar_err = (out_copy_w / out_copy_h) / target_ar - 1.0
+                sc_err_x = out_copy_w / ideal_w - 1.0
+                sc_err_y = out_copy_h / ideal_h - 1.0
+                geom_note = (
+                    f" | content {out_copy_w}×{out_copy_h} @ ({out_dst_x},{out_dst_y}) "
+                    f"aspect {ar_err:+.2%} scale {sc_err_x:+.2%}/{sc_err_y:+.2%}"
+                )
 
             control_mask = torch.from_numpy(np.stack([mask] * n))  # (N, eff_h, eff_w)
 
@@ -252,7 +438,8 @@ class VACEOutpaint(io.ComfyNode):
         scale_info = f" → output {eff_w}×{eff_h}" if (eff_w != crop_w_dim or eff_h != crop_h_dim) else ""
         print(
             f"[VACE Outpaint] {src_w}×{src_h} → crop {crop_w_dim}×{crop_h_dim}{scale_info} | "
-            f"pad T={pad_t} B={pad_b} L={pad_l} R={pad_r} | frames={n}"
+            f"model={model_name} grid={grid} | "
+            f"pad T={pad_t} B={pad_b} L={pad_l} R={pad_r} | frames={n}{geom_note}"
         )
 
         return io.NodeOutput(control_video, control_mask, eff_w, eff_h, n)

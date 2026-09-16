@@ -34,7 +34,7 @@ git clone https://github.com/stuttlepress/ComfyUI-Wan-VACE-Prep
 
 ### Video Outpaint
 
-Prepares a video for outpainting using an interactive canvas widget. Position and size an output window over your source frames. Regions outside the source become the outpaint area. Primarily designed for VACE, with support for LTX-2 outpainting via the pad color preset.
+Prepares a video for outpainting using an interactive canvas widget. Position and size an output window over your source frames. Regions outside the source become the outpaint area. A model selector targets Wan VACE, LTX-2, or MiniMax H3: each sets its own quantisation grid and pad color.
 
 Renamed from *VACE Outpaint*.
 
@@ -52,7 +52,13 @@ Renamed from *VACE Outpaint*.
 | Control | Description |
 |-|-|
 | output resolution | Width and height of the generated output. Leave at 0 to match the crop box size. |
-| pad color | Fill color for the outpainted region of the control video. "wan" = gray (0.5), "ltx" = black (0.0), "custom" = enter a hex code (#RRGGBB), 0-255 integers (R,G,B), or 0.0-1.0 floats (R,G,B). |
+| model | Consumer model. Sets the quantisation grid **and** the pad color together: `wan` = 16px grid, gray (0.5); `ltx` = 32px grid, black (0.0); `h3` = 32px grid, gray (0.5). Changing it re-snaps the crop box and output resolution onto the new grid. |
+| pad | `model default` uses the pad color above; `custom` enables the color field: a hex code (#RRGGBB), 0-255 integers (R,G,B), or 0.0-1.0 floats (R,G,B). |
+| grid | Grid override in output pixels. Leave blank (0) to use the model's grid. |
+
+**Why the grid matters.** A model's mask cell is its VAE spatial compression times the transformer's patch size: 16 for Wan (8x VAE, 2x2 patch), 32 for LTX-2 (32x VAE, 1x1 patch) and MiniMax H3 (16x VAE, 2x2 patch). A mask boundary that is not a multiple of that cell lands mid-cell, and the consumer must either freeze it (pad color is encoded as clean content, drawing a frame around the kept region) or regenerate it (up to grid-1 px of real footage replaced, which reads as edge blur). Both output paths here emit the kept rect on the grid, so every cell is purely content or purely pad.
+
+**Upgrading from an older version.** The `pad color` widget became `model` in the same slot, so saved workflows load without edits: `wan` and `ltx` map straight across, and a custom pad color becomes `wan` + `pad: custom`, which is what it did before. Saved `ltx` workflows do change behavior - their grid goes from 16 to 32, re-snapping the layout. That was the bug; the node logs the snap when it happens.
 
 **Outputs:**
 
